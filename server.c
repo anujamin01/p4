@@ -1,7 +1,7 @@
-/*
 #include <stdio.h>
 #include "udp.h"
-
+#include "ufs.h"
+#include "mfs.h"
 #define BUFFER_SIZE (1000)
 
 // server code
@@ -11,8 +11,10 @@ int main(int argc, char *argv[]) {
     while (1) {
 	struct sockaddr_in addr;
 	char message[BUFFER_SIZE];
+    //msg_t message;
 	printf("server:: waiting...\n");
 	int rc = UDP_Read(sd, &addr, message, BUFFER_SIZE);
+
 	printf("server:: read message [size:%d contents:(%s)]\n", rc, message);
 	if (rc > 0) {
             char reply[BUFFER_SIZE];
@@ -23,4 +25,3 @@ int main(int argc, char *argv[]) {
     }
     return 0; 
 }
-*/

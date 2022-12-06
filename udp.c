@@ -1,4 +1,3 @@
-/*
 #include "udp.h"
 
 // create a socket and bind it to a port on the current machine
@@ -65,5 +64,3 @@ int UDP_Read(int fd, struct sockaddr_in *addr, char *buffer, int n) {
 int UDP_Close(int fd) {
     return close(fd);
 }
-
-*/

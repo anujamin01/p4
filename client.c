@@ -1,18 +1,9 @@
-#include <mfs.h>
 
-int MFS_Init(char *hostname, int port);
-int MFS_Lookup(int pinum, char *name);
-int MFS_Stat(int inum, MFS_Stat_t *m);
-int MFS_Write(int inum, char *buffer, int offset, int nbytes);
-int MFS_Read(int inum, char *buffer, int offset, int nbytes);
-int MFS_Creat(int pinum, int type, char *name);
-int MFS_Unlink(int pinum, char *name);
-int MFS_Shutdown();
-
-/*
 #include <stdio.h>
+#include <stdlib.h>
+#include "mfs.h"
+#include "ufs.h"
 #include "udp.h"
-
 #define BUFFER_SIZE (1000)
 
 // client code
@@ -23,6 +14,7 @@ int main(int argc, char *argv[]) {
     int rc = UDP_FillSockAddr(&addrSnd, "localhost", 10000);
 
     char message[BUFFER_SIZE];
+    //msg_t message;
     sprintf(message, "hello world");
 
     printf("client:: send message [%s]\n", message);
@@ -37,4 +29,3 @@ int main(int argc, char *argv[]) {
     printf("client:: got reply [size:%d contents:(%s)\n", rc, message);
     return 0;
 }
-*/

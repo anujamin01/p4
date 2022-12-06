@@ -6,6 +6,8 @@
 
 #define MFS_BLOCK_SIZE   (4096)
 
+enum MFS_Func {MFS_Init, MFS_Lookup, MFS_Stat, MFS_Write, MFS_Read, MFS_Creat, MFS_Unlink, MFS_Shutdown};
+
 typedef struct __MFS_Stat_t {
     int type;   // MFS_DIRECTORY or MFS_REGULAR
     int size;   // bytes
@@ -18,6 +20,7 @@ typedef struct __MFS_DirEnt_t {
 } MFS_DirEnt_t;
 
 typedef struct{
+    int func;
     char *hostname;
     int port;
     int pinum;

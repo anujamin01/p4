@@ -2,14 +2,48 @@
 #include "udp.h"
 #include "ufs.h"
 #include "mfs.h"
+#include "msg.h"
+
 #define BUFFER_SIZE (1000)
 
 int fd = -1;
 
-int Init(char *hostname, int port){
+// TODO: fsync() after making some change to the file system
+// so probably fsync() at the end of each method?
+
+int Init(char *hostname, int port, struct sockaddr_in addr){
+    // actually, probably don't need Init() in server
+
+    /*
+    // load image and send it to client?
+    char message[BUFFER_SIZE];
+    UDP_Write(fd, &addr, message, sizeof(BUFFER_SIZE));
+    */
+
     return 0;
 }
 int Lookup(int pinum, char *name){
+    // TODO:
+    // from image file
+    // from ufs.h, figure out where in the super_t struct we want to look. 
+    // We will get a dir_ent_t if valid.
+    // use the inum to get the inode_t
+    // the first element of unsigned int direct[DIRECT_PTRS]; will be the pinum
+    // probably return 0 if valid, -1 if not?
+    FILE *fptr;
+    fptr = fopen("image", "r");
+
+    char read_file[64];
+
+    super_t s;
+
+    if (fptr == NULL){
+        return -1;
+    }
+    fgets(read_file, 32, fptr);
+    s.inode_bitmap_addr = read_file;
+
+
     return 0;
 }
 int Stat(int inum, MFS_Stat_t *m){
@@ -36,66 +70,52 @@ int Shutdown(){
 int main(int argc, char *argv[]) {
     int sd = UDP_Open(10000);
     assert(sd > -1);
+
     while (1) {
-	struct sockaddr_in addr;
-	char message[BUFFER_SIZE];
-    msg_t encoded_msg;
-	printf("server:: waiting...\n");
-	int rc = UDP_Read(sd, &addr, message, BUFFER_SIZE);
+        struct sockaddr_in addr;
+        msg_t message;
+        super_t s;
+        printf("server:: waiting...\n");
+        int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
 
-    if (rc < 0){
-        return -1;
-    }
+        if (rc < 0){
+            return -1;
+        }
 
-    encoded_msg.func = atoi(strtok(message, "~"));
-    encoded_msg.hostname= strtok(NULL, "~");
-    encoded_msg.port = atoi(strtok(NULL, "~"));
-    encoded_msg.pinum = atoi(strtok(NULL, "~"));
-    encoded_msg.name = strtok(NULL, "~");
-    encoded_msg.inum = atoi(strtok(NULL, "~"));
-    encoded_msg.m = atoi(strtok(NULL, "~"));
-    encoded_msg.buffer = strtok(NULL, "~");
-    encoded_msg.offset = atoi(strtok(NULL, "~"));
-    encoded_msg.nbytes = atoi(strtok(NULL, "~"));
-    encoded_msg.type = atoi(strtok(NULL, "~"));
+        switch(message.func){
+            case INIT:
+                Init(message.hostname, message.port, addr);
+                break;
+            case LOOKUP:
+                Lookup(message.pinum, message.name);
+                break;
+            case STAT:
+                Stat(message.inum, message.m);
+                break;
+            case WRITE:
+                Write(message.inum, message.buffer, message.offset, message.nbytes);
+                break;
+            case READ:
+                Read(message.inum, message.buffer, message.offset, message.nbytes);
+                break;
+            case CREAT:
+                Creat(message.pinum, message.type, message.name);
+                break;
+            case UNLINK:
+                Unlink(message.pinum, message.name);
+                break;
+            case SHUTDOWN:
+                Shutdown();
+                break;
+        }
 
-
-    int int_reply = NULL;
-    switch(encoded_msg.func){
-        case 0:
-            int_reply = Init(encoded_msg.hostname, encoded_msg.port);
-            break;
-        case 1:
-            int_reply = Lookup(encoded_msg.pinum, encoded_msg.name);
-            break;
-        case 2:
-            int_reply = Stat(encoded_msg.inum, encoded_msg.m);
-            break;
-        
-        case 3:
-            int_reply = Write(encoded_msg.inum, encoded_msg.buffer, encoded_msg.offset, encoded_msg.nbytes);
-            break;
-        case 4:
-            int_reply = Read(encoded_msg.inum, encoded_msg.buffer, encoded_msg.offset, encoded_msg.nbytes);
-            break;
-        case 5:
-            int_reply = Creat(encoded_msg.pinum, encoded_msg.type, encoded_msg.name);
-            break;
-        case 6:
-            int_reply = Unlink(encoded_msg.pinum, encoded_msg.name);
-            break;
-        case 7:
-            int_reply = Shutdown();
-            break;
-    }
-
-	printf("server:: read message [size:%d contents:(%s)]\n", rc, message);
-	if (rc > 0) {
-            char reply[BUFFER_SIZE];
-            sprintf(reply, "goodbye world");
-            rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
-	    printf("server:: reply\n");
-	} 
+        printf("server:: read message");
+        if (rc > 0) {
+                char reply[BUFFER_SIZE];
+                sprintf(reply, "goodbye world");
+                rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
+            printf("server:: reply\n");
+        } 
     }
     return 0; 
 }

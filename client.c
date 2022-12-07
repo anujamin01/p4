@@ -13,11 +13,13 @@ int main(int argc, char *argv[]) {
     int sd = UDP_Open(20000);
     int rc = UDP_FillSockAddr(&addrSnd, "localhost", 10000);
 
-    char message[BUFFER_SIZE]; // messages like: "function~hostname~port~pinum~name~*m~buffer~offset~nbytes~type"
-    msg_t encoded_msg;
+    // "function~hostname~port~pinum~name~*m~buffer~offset~nbytes~type"
+    // "0~a~1~1~a~1~a~1~1~1"
+
+    char message[BUFFER_SIZE];
 
     printf("client:: send message [%s]\n", message);
-    rc = UDP_Write(sd, &addrSnd, &message, BUFFER_SIZE); // change message to encoded_msg?
+    rc = UDP_Write(sd, &addrSnd, message, BUFFER_SIZE); // change message to encoded_msg?
     if (rc < 0) {
 	printf("client:: failed to send\n");
 	exit(1);

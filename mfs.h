@@ -6,8 +6,6 @@
 
 #define MFS_BLOCK_SIZE   (4096)
 
-enum MFS_Func {MFS_Init, MFS_Lookup, MFS_Stat, MFS_Write, MFS_Read, MFS_Creat, MFS_Unlink, MFS_Shutdown};
-
 typedef struct __MFS_Stat_t {
     int type;   // MFS_DIRECTORY or MFS_REGULAR
     int size;   // bytes
@@ -18,20 +16,6 @@ typedef struct __MFS_DirEnt_t {
     char name[28];  // up to 28 bytes of name in directory (including \0)
     int  inum;      // inode number of entry (-1 means entry not used)
 } MFS_DirEnt_t;
-
-typedef struct{
-    int func;
-    char *hostname;
-    int port;
-    int pinum;
-    char *name;
-    int inum;
-    MFS_Stat_t *m;
-    char *buffer;
-    int offset;
-    int nbytes;
-    int type;
-} msg_t;
 
 
 int MFS_Init(char *hostname, int port);
@@ -44,3 +28,5 @@ int MFS_Unlink(int pinum, char *name);
 int MFS_Shutdown();
 
 #endif // __MFS_h__
+
+// enum MFS_Func {MFS_Init, MFS_Lookup, MFS_Stat, MFS_Write, MFS_Read, MFS_Creat, MFS_Unlink, MFS_Shutdown};

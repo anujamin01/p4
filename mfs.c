@@ -1,11 +1,8 @@
 #include "mfs.h"
 #include "udp.h"
+#include "msg.h"
 
-/*
-char* host_name = NULL;
-int server_port = 0;
 int online = 0;
-*/
 
 struct sockaddr_in server_addr;
 int fd;
@@ -16,18 +13,8 @@ int MFS_Init(char *hostname, int port){
         printf("Failed to set up server address\m");
         return rc;
     }
-    //fd = UDP_Open();
+    fd = UDP_Open(port);
     return 0;
-
-    /*
-    host_name = strdup(hostname);
-    server_port = port;
-    if (server_port < 0 || host_name == NULL){
-        return -1;
-    }
-    online = 1;
-    return 0;
-    */
 }
 
 int MFS_Lookup(int pinum, char *name){
@@ -40,16 +27,68 @@ int MFS_Lookup(int pinum, char *name){
     if(strlen(name) > 100 || name == NULL){
         return -1;
     }
+    
+    msg_t m;
+    m.func = LOOKUP;
+    m.pinum = pinum;
+    m.name = name;
 
-    // look up the entry "name" in it
-    //UDP_Packet tx;
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
 }
 
-int MFS_Stat(int inum, MFS_Stat_t *m);
-int MFS_Write(int inum, char *buffer, int offset, int nbytes);
-int MFS_Read(int inum, char *buffer, int offset, int nbytes);
-int MFS_Creat(int pinum, int type, char *name);
-int MFS_Unlink(int pinum, char *name);
+int MFS_Stat(int inum, MFS_Stat_t *m){
+    msg_t message;
+    message.func = STAT;
+    message.type = m;
+    message.inum = inum;
+    
+    UDP_Write(fd, &server_addr, (char* )&message, sizeof(msg_t));
+
+    // TODO: probably something here
+
+    return 0;
+}
+
+int MFS_Write(int inum, char *buffer, int offset, int nbytes){
+    msg_t m;
+    m.func = WRITE;
+    m.inum = inum;
+    m.buffer = buffer;
+    m.offset = offset;
+    m.nbytes = nbytes;
+
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+}
+
+int MFS_Read(int inum, char *buffer, int offset, int nbytes){
+    msg_t m;
+    m.func = READ;
+    m.inum = inum;
+    m.buffer = buffer;
+    m.offset = offset;
+    m.nbytes = nbytes;
+
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+}
+
+int MFS_Creat(int pinum, int type, char *name){
+    msg_t m;
+    m.func = CREAT;
+    m.pinum = pinum;
+    m.type = type;
+    m.name = name;
+
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+}
+
+int MFS_Unlink(int pinum, char *name){
+    msg_t m;
+    m.func = UNLINK;
+    m.pinum = pinum;
+    m.name = name;
+
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+}
 
 int MFS_Shutdown(){
     exit(0);

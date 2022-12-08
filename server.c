@@ -28,7 +28,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr){
     return 0;
 }
 
-int Lookup(int pinum, char *name){
+int Lookup(int pinum, char *name, super_t *superblock){
     // TODO:
     // from image file
     // from ufs.h, figure out where in the super_t struct we want to look. 
@@ -49,9 +49,28 @@ int Lookup(int pinum, char *name){
     fgets(read_file, 32, fptr);
     //s.inode_bitmap_addr = atoi(read_file);
     */
+
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum){
+        return -1;
+    }
+    super_t s = *superblock;
+    int inode_region_addr = s.inode_region_addr;
     return 0;
 }
 int Stat(int inum, MFS_Stat_t *m){
+    /*
+    int inum = message.inum; // message.stat.inum;
+    if (message.inum >= max_inodes){
+        printf("Got invalid inum\n");
+        server_message.returnCode = -1;
+    }
+    else{
+        // check that the inode actually exist looking at the bitmap
+        server_message.type = inodes[inum].type;
+        server_message.returnCode = 0;
+    }
+    UDP_Write(fd, &addr, (void*)&server_message, sizeof(server_message));
+    */
     return 0;
 }
 int Write(int inum, char *buffer, int offset, int nbytes){
@@ -103,6 +122,8 @@ int main(int argc, char *argv[]) {
     if (fstat(file_fd, &file_info) != 0){
         perror("Fstat failed");
     }
+
+    // TODO: fix parameters
     fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, file_fd, 0);
 
     super_t *superblock = (super_t*)fs_img;
@@ -116,6 +137,7 @@ int main(int argc, char *argv[]) {
     printf("Number of inode blocks %i\n",superblock->inode_region_len);
     printf("Number of data blocks: %i\n", superblock->data_region_len);
     printf("Waiting for client messages\n");
+
     while (1) {
         struct sockaddr_in addr;
         msg_t message;
@@ -133,18 +155,9 @@ int main(int argc, char *argv[]) {
                 Init(message.hostname, message.port, addr);
                 break;
             case LOOKUP:
-                Lookup(message.pinum, message.name);
+                Lookup(message.pinum, message.name, superblock);
                 break;
             case STAT:
-                int inum = message.inum; // message.stat.inum;
-                if (message.inum >= max_inodes){
-                    printf("Got invalid inum\n");
-                    server_message.returnCode = -1;
-                }
-                else{
-                    // check that the inode actually exist looking at the bitmap
-//                    server_message.type = inodes[inum].;
-                }
                 Stat(message.inum, message.m);
                 break;
             case WRITE:

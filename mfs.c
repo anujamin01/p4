@@ -11,7 +11,7 @@ int fd;
 int MFS_Init(char *hostname, int port){
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
     if(rc != 0){
-        printf("Failed to set up server address\m");
+        printf("Failed to set up server address\n");
         return rc;
     }
     fd = UDP_Open(port);
@@ -46,7 +46,7 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
     msg_t message;
     s_msg_t server_message;
     message.func = STAT;
-    message.type = m;
+    message.m = m;
     message.inum = inum;
     
     UDP_Write(fd, &server_addr, (char* )&message, sizeof(message));
@@ -65,7 +65,7 @@ int MFS_Write(int inum, char *buffer, int offset, int nbytes){
     s_msg_t s_m;
     m.func = WRITE;
     m.inum = inum;
-    m.buffer = buffer;
+    memcpy(buffer, m.buffer, nbytes);
     m.offset = offset;
     m.nbytes = nbytes;
 
@@ -82,7 +82,7 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
 
     m.func = READ;
     m.inum = inum;
-    m.buffer = buffer;
+    memcpy(buffer, m.buffer, nbytes);
     m.offset = offset;
     m.nbytes = nbytes;
 
@@ -105,7 +105,7 @@ int MFS_Creat(int pinum, int type, char *name){
     m.func = CREAT;
     m.pinum = pinum;
     m.type = type;
-    m.name = name;
+    memcpy(name, m.name, sizeof(name));
 
     UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
 
@@ -121,7 +121,7 @@ int MFS_Unlink(int pinum, char *name){
 
     m.func = UNLINK;
     m.pinum = pinum;
-    m.name = name;
+    memcpy(name, m.name, sizeof(name));
 
     UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
 

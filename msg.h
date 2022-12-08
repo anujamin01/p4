@@ -14,10 +14,10 @@ typedef struct{
     char *hostname;
     int port;
     int pinum;
-    char *name;
+    char name[4096];
     int inum;
     MFS_Stat_t *m;
-    char *buffer;
+    char buffer[4096];
     int offset;
     int nbytes;
     int type;
@@ -27,6 +27,6 @@ typedef struct{
     int inode;
     int type;
     int size;
-    char *buffer;
+    char buffer[4096];
     int returnCode;
 } s_msg_t;

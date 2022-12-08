@@ -21,14 +21,16 @@ typedef struct {
 
 // presumed: block 0 is the super block
 typedef struct __super {
-    int inode_bitmap_addr; // block address
+    int inode_bitmap_addr; // block address (in blocks)
     int inode_bitmap_len;  // in blocks
-    int data_bitmap_addr;  // block address
+    int data_bitmap_addr;  // block address (in blocks)
     int data_bitmap_len;   // in blocks
-    int inode_region_addr; // block address
+    int inode_region_addr; // block address (in blocks)
     int inode_region_len;  // in blocks
-    int data_region_addr;  // block address
+    int data_region_addr;  // block address (in blocks)
     int data_region_len;   // in blocks
+    int num_inodes;        // just the number of inodes
+    int num_data;          // and data blocks...`
 } super_t;
 
 

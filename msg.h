@@ -22,3 +22,11 @@ typedef struct{
     int nbytes;
     int type;
 } msg_t;
+
+typedef struct{
+    int inode;
+    int type;
+    int size;
+    char *buffer;
+    int returnCode;
+} s_msg_t;

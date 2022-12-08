@@ -3,6 +3,8 @@
 #include "ufs.h"
 #include "mfs.h"
 #include "msg.h"
+#include <sys/mman.h>
+
 
 #define BUFFER_SIZE (1000)
 
@@ -35,14 +37,13 @@ int Lookup(int pinum, char *name){
 
     char read_file[64];
 
-    super_t s;
+    //super_t s;
 
     if (fptr == NULL){
         return -1;
     }
     fgets(read_file, 32, fptr);
-    s.inode_bitmap_addr = read_file;
-
+    //s.inode_bitmap_addr = atoi(read_file);
 
     return 0;
 }
@@ -68,13 +69,35 @@ int Shutdown(){
 
 // server code
 int main(int argc, char *argv[]) {
-    int sd = UDP_Open(10000);
+    assert(argc == 3);
+    int port_num = atoi(argv[1]);
+    const char* img_path = argv[2];
+
+    int sd = UDP_Open(port_num);
+
+    if (sd <= 0){
+        printf("Failed to bind UDP socket");
+        return -1;
+    } else{
+        printf("Listening on port %d", port_num);
+    }
     assert(sd > -1);
+    struct stat file_info;
+    int file_fd = open(img_path, O_RDWR | O_APPEND);
+    if (fstat(file_fd. &file_info) != 0){
+        perror("Fstat failed");
+    }
+    void *fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, file_fd, 0);
+    super_t *superblock = (super_t*)fs_img;
+    int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int)*8;
+    unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
+    inode_t *inodes = fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE;
 
     while (1) {
         struct sockaddr_in addr;
         msg_t message;
-        super_t s;
+        s_msg_t server_message;
+        //super_t s;
         printf("server:: waiting...\n");
         int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
 
@@ -90,6 +113,15 @@ int main(int argc, char *argv[]) {
                 Lookup(message.pinum, message.name);
                 break;
             case STAT:
+            int inum = message.m.inum; // message.stat.inum;
+                if (message.inum >= max_inodes){
+                    printf("Got invalid inum\n");
+                    server_message.returnCode = -1;
+                }
+                else{
+                    // check that the inode actually exist looking at the bitmap
+                    server_message.type = inodes[inum
+                }
                 Stat(message.inum, message.m);
                 break;
             case WRITE:

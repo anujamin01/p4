@@ -1,6 +1,7 @@
 #include "mfs.h"
 #include "udp.h"
 #include "msg.h"
+#include <string.h>
 
 int online = 0;
 
@@ -29,67 +30,117 @@ int MFS_Lookup(int pinum, char *name){
     }
     
     msg_t m;
+    s_msg_t s_m;
     m.func = LOOKUP;
     m.pinum = pinum;
-    m.name = name;
+    memcpy(m.name, name, strlen(name));
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+
+    struct sockaddr_in ret_addr;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m));
+    return s_m.inode;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m){
     msg_t message;
+    s_msg_t server_message;
     message.func = STAT;
     message.type = m;
     message.inum = inum;
     
-    UDP_Write(fd, &server_addr, (char* )&message, sizeof(msg_t));
+    UDP_Write(fd, &server_addr, (char* )&message, sizeof(message));
 
-    // TODO: probably something here
+    struct sockaddr_in ret_addr;
+
+    UDP_Read(fd, &ret_addr, (char*)&server_message, sizeof(server_message));
+    m->type = server_message.type;
+    m->type = server_message.size;
 
     return 0;
 }
 
 int MFS_Write(int inum, char *buffer, int offset, int nbytes){
     msg_t m;
+    s_msg_t s_m;
     m.func = WRITE;
     m.inum = inum;
     m.buffer = buffer;
     m.offset = offset;
     m.nbytes = nbytes;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+
+    struct sockaddr_in ret_addr;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m));
+    return 0;
 }
 
 int MFS_Read(int inum, char *buffer, int offset, int nbytes){
     msg_t m;
+    s_msg_t s_m;
+
     m.func = READ;
     m.inum = inum;
     m.buffer = buffer;
     m.offset = offset;
     m.nbytes = nbytes;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+
+    struct sockaddr_in ret_addr;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+    if(s_m.type == 0){
+        // TODO: fill up a MFS_DirEnt_t struct?
+        return 0;
+    }
+    memcpy(buffer, s_m.buffer, nbytes);
+    return 0;
 }
 
 int MFS_Creat(int pinum, int type, char *name){
     msg_t m;
+    s_msg_t s_m;
+
     m.func = CREAT;
     m.pinum = pinum;
     m.type = type;
     m.name = name;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+
+    struct sockaddr_in ret_addr;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+
+    return s_m.returnCode;
 }
 
 int MFS_Unlink(int pinum, char *name){
     msg_t m;
+    s_msg_t s_m;
+
     m.func = UNLINK;
     m.pinum = pinum;
     m.name = name;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+
+    struct sockaddr_in ret_addr;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+
+    return s_m.returnCode;
 }
 
 int MFS_Shutdown(){
-    exit(0);
+    msg_t m;
+    s_msg_t s_m;
+
+    m.func = SHUTDOWN;
+
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+
+    struct sockaddr_in ret_addr;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+
+    return s_m.returnCode;
 }

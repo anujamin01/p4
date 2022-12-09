@@ -29,6 +29,23 @@ void set_bit(unsigned int *bitmap, int position) {
    bitmap[index] |=  0x1 << offset;
 }
 
+/*
+If not allocated, return -1 else return 0
+*/
+unsigned int checkInodeAllocated(int pinum){
+    uint bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
+    unsigned int* bits = malloc(sizeof(unsigned int) * bitmapSize); //malloc bitmap :)
+    memcpy(bits, fs_img + superblock->inode_bitmap_addr, bitmapSize * sizeof(unsigned int));
+
+    // if not allocated
+    if(get_bit(bits, pinum) == 0){
+        free(bits);
+        return 0; 
+    }
+    free(bits);
+    return 1;
+}
+
 int Init(char *hostname, int port, struct sockaddr_in addr){
     // actually, probably don't need Init() in server
 
@@ -50,25 +67,53 @@ int Lookup(int pinum, char *name){
     // the first element of unsigned int direct[DIRECT_PTRS]; will be the pinum
     // probably return 0 if valid, -1 if not?
 
-    //FILE *fptr;
-    //fptr = fopen("image", "r");
-
-    //char read_file[64];
-
-    //super_t s;
-    /*
-    if (fptr == NULL){; (in blocks)
-    }
-    fgets(read_file, 32, fptr);
-    //s.inode_bitmap_addr = atoi(read_file);
-    */
-
     if (pinum < 0 || name == NULL || superblock->num_inodes < pinum){
         return -1;
     }
     super_t s = *superblock;
-    int inode_region_addr = s.inode_region_addr;
-    return 0;
+    //check if inode allocated, TODO: ensure bitmap thingy works
+    if(checkInodeAllocated(pinum) == 0) return -1;
+
+    // seek to inode
+    long addr = (long)(fs_img + s.inode_region_addr + (pinum * 4096));
+    inode_t inode;
+    memcpy(&inode, (void*)addr, sizeof(inode_t));
+
+    // read inode
+    if (inode.type != UFS_DIRECTORY){
+        return -1;
+    }
+
+    // number of directory entries
+    int num_dir_ent = (inode.size)/sizeof(dir_ent_t);
+
+    // number of used data blocks
+    int num_data_blocks = inode.size / 4096; //TODO: Fix 500 / 4096 = 0 
+    if(inode.size % 4096 != 0) num_data_blocks++;
+
+    int x = inode.size; //AMOUNT of BYTES in the file. 4100 bytes 2 data blocks
+    dir_ent_t arr[num_dir_ent];
+    //4100 - 4096 = 4
+    //seek to second data block, reading last 4 bytes
+    int i = 0;
+    while(x > 0 && i < num_dir_ent){
+        if (inode.direct[i++] == -1){
+            continue;
+        }
+        long curr_data_region = superblock->data_region_addr + inode.direct[i];
+        //read(curr_data_region, &name, 28);
+        dir_ent_t currEnt;
+        memcpy(&currEnt, (void*)curr_data_region, 32);
+        arr[i] = currEnt;
+        i++;
+    }
+
+    for (int i = 0; i < num_dir_ent; i++){
+        if (strcmp(arr[i].name,name) == 0){
+            return arr[i].inum;
+        }
+    }
+    return -1;
 }
 int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ // TODO: include client and server message for parameters
     // check for invalid inum or invalid mfs_stat
@@ -105,7 +150,8 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ 
     int inum = message.inum; // message.stat.inum;
     if (message.inum >= max_inodes){
         printf("Got invalid inum\n");
-        server_message.returnCode = -1;
+        server_message.returnCode = -1;        dir_ent_t arr[num_dir_ent];
+
     }
     else{
         // check that the inode actually exist looking at the bitmap

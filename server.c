@@ -100,7 +100,21 @@ int Write(int inum, char *buffer, int offset, int nbytes){
 int Read(int inum, char *buffer, int offset, int nbytes){
     return 0;
 }
-int Creat(int pinum, int type, char *name){
+int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr){
+    // if invalid pnum or invalid/too long of name
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > BUFFER_SIZE){
+        return -1;
+    }
+    // check that the pinode actually exist looking at the bitmap
+    long pinode_addr = (long)(fs_img + superblock->inode_region_addr + pinum * 4096);
+    inode_t pinode;
+    memcpy(&pinode,(void*)pinode_addr,sizeof(inode_t));
+    // pinode has not been allocated DNE
+    if (pinode.size == 0){
+        //server_msg.returnCode = -1;
+        return -1;
+    }
+
     return 0;
 }
 int Unlink(int pinum, char *name){
@@ -179,7 +193,7 @@ int main(int argc, char *argv[]) {
                 Lookup(message.pinum, message.name);
                 break;
             case STAT:
-                Stat(message.inum, message.m,server_message,addr);
+                Stat(message.inum, message.m, server_message, addr);
                 break;
             case WRITE:
                 Write(message.inum, message.buffer, message.offset, message.nbytes);
@@ -188,7 +202,7 @@ int main(int argc, char *argv[]) {
                 Read(message.inum, message.buffer, message.offset, message.nbytes);
                 break;
             case CREAT:
-                Creat(message.pinum, message.type, message.name);
+                Creat(message.pinum, message.type, message.name, server_message, addr);
                 break;
             case UNLINK:
                 Unlink(message.pinum, message.name);

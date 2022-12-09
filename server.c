@@ -17,6 +17,18 @@ super_t *superblock;
 // TODO: fsync() after making some change to the file system
 // so probably fsync() at the end of each method?
 
+unsigned int get_bit(unsigned int *bitmap, int position) {
+   int index = position / 32;
+   int offset = 31 - (position % 32);
+   return (bitmap[index] >> offset) & 0x1;
+}
+
+void set_bit(unsigned int *bitmap, int position) {
+   int index = position / 32;
+   int offset = 31 - (position % 32);
+   bitmap[index] |=  0x1 << offset;
+}
+
 int Init(char *hostname, int port, struct sockaddr_in addr){
     // actually, probably don't need Init() in server
 
@@ -65,14 +77,23 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ 
         return -1;
     }
     // check that the inode actually exist looking at the bitmap
+    
     long inode_addr = (long)(fs_img + superblock->inode_region_addr + inum * 4096);
     inode_t inode;
     memcpy(&inode,(void*)inode_addr,sizeof(inode_t));
-    // inode has not been allocated DNE
-    if (inode.size == 0){
+    //Get inode bitmap, does this work?
+
+    uint bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
+    unsigned int* bits = malloc(sizeof(unsigned int) * bitmapSize); //malloc bitmap :)
+    memcpy(bits, fs_img + superblock->inode_bitmap_addr, bitmapSize * sizeof(unsigned int));
+
+    // if not allocated
+    if(get_bit(bits, inum) == 0){
         server_msg.returnCode = -1;
         return -1;
     }
+    free(bits);
+   
     m->size = inode.size;
     m->type = inode.type;
     server_msg.returnCode = 0;
@@ -125,17 +146,6 @@ int Shutdown(){
     exit(0);
 }
 
-unsigned int get_bit(unsigned int *bitmap, int position) {
-   int index = position / 32;
-   int offset = 31 - (position % 32);
-   return (bitmap[index] >> offset) & 0x1;
-}
-
-void set_bit(unsigned int *bitmap, int position) {
-   int index = position / 32;
-   int offset = 31 - (position % 32);
-   bitmap[index] |=  0x1 << offset;
-}
 
 // server code
 int main(int argc, char *argv[]) {

@@ -8,8 +8,30 @@
 
 // client code
 int main(int argc, char *argv[]) {
-    struct sockaddr_in addrSnd, addrRcv;
+    /*
+    char *hostname = argv[1];
+    int port = atoi(argv[2]);
+    char* cmd = argv[3];
+    int rc = MFS_Init(hostname,port);
 
+    if (rc != 0){
+        return -1;
+    }
+    // will need to check return codes for the client
+    if (strcmp(cmd,"stat") == 0){
+        int inum = atoi(argv[4]);
+        MFS_Stat_t stat;
+        int ret = MFS_Stat(inum, &stat);
+        if (ret != 0){
+            printf("Error\n");
+        } else{
+            printf("File Type: %d\n", stat.type);
+            printf("File Size: %d\n", stat.size);
+        }
+    }
+    */
+    struct sockaddr_in addrSnd, addrRcv;
+    
     int sd = UDP_Open(20000);
     int rc = UDP_FillSockAddr(&addrSnd, "localhost", 10000);
 

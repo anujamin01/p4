@@ -13,6 +13,7 @@
 
 int fd = -1;
 void * fs_img;
+super_t *superblock;
 // TODO: fsync() after making some change to the file system
 // so probably fsync() at the end of each method?
 
@@ -28,7 +29,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr){
     return 0;
 }
 
-int Lookup(int pinum, char *name, super_t *superblock){
+int Lookup(int pinum, char *name){
     // TODO:
     // from image file
     // from ufs.h, figure out where in the super_t struct we want to look. 
@@ -57,7 +58,28 @@ int Lookup(int pinum, char *name, super_t *superblock){
     int inode_region_addr = s.inode_region_addr;
     return 0;
 }
-int Stat(int inum, MFS_Stat_t *m){
+int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ // TODO: include client and server message for parameters
+    // check for invalid inum or invalid mfs_stat
+    if (inum < 0 || superblock->num_inodes < inum){
+        server_msg.returnCode = -1;
+        return -1;
+    }
+    // check that the inode actually exist looking at the bitmap
+    long inode_addr = (long)(fs_img + superblock->inode_region_addr + inum * 4096);
+    inode_t inode;
+    memcpy(&inode,(void*)inode_addr,sizeof(inode_t));
+    // inode has not been allocated DNE
+    if (inode.size == 0){
+        server_msg.returnCode = -1;
+        return -1;
+    }
+    m->size = inode.size;
+    m->type = inode.type;
+    server_msg.returnCode = 0;
+    server_msg.m = m;
+    UDP_Write(fd, &addr, (void*)&server_msg, sizeof(server_msg)); 
+    return 0;
+    // need to grab the data 
     /*
     int inum = message.inum; // message.stat.inum;
     if (message.inum >= max_inodes){
@@ -71,7 +93,6 @@ int Stat(int inum, MFS_Stat_t *m){
     }
     UDP_Write(fd, &addr, (void*)&server_message, sizeof(server_message));
     */
-    return 0;
 }
 int Write(int inum, char *buffer, int offset, int nbytes){
     return 0;
@@ -126,7 +147,7 @@ int main(int argc, char *argv[]) {
     // TODO: fix parameters
     fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, file_fd, 0);
 
-    super_t *superblock = (super_t*)fs_img;
+    superblock = (super_t*)fs_img;
     int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
 
     unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
@@ -155,10 +176,10 @@ int main(int argc, char *argv[]) {
                 Init(message.hostname, message.port, addr);
                 break;
             case LOOKUP:
-                Lookup(message.pinum, message.name, superblock);
+                Lookup(message.pinum, message.name);
                 break;
             case STAT:
-                Stat(message.inum, message.m);
+                Stat(message.inum, message.m,server_message,addr);
                 break;
             case WRITE:
                 Write(message.inum, message.buffer, message.offset, message.nbytes);

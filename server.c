@@ -13,49 +13,51 @@
 
 int fd = -1;
 void * fs_img;
-// TODO: fsync() after making some change to the file system
-// so probably fsync() at the end of each method?
-
-int Init(char *hostname, int port, struct sockaddr_in addr){
-    // actually, probably don't need Init() in server
-
-    /*
-    // load image and send it to client?
-    char message[BUFFER_SIZE];
-    UDP_Write(fd, &addr, message, sizeof(BUFFER_SIZE));
-    */
-
-    return 0;
-}
 
 int Lookup(int pinum, char *name, super_t *superblock){
-    // TODO:
-    // from image file
-    // from ufs.h, figure out where in the super_t struct we want to look. 
-    // We will get a dir_ent_t if valid.
-    // use the inum to get the inode_t
-    // the first element of unsigned int direct[DIRECT_PTRS]; will be the pinum
-    // probably return 0 if valid, -1 if not?
-
-    //FILE *fptr;
-    //fptr = fopen("image", "r");
-
-    //char read_file[64];
-
-    //super_t s;
-    /*
-    if (fptr == NULL){; (in blocks)
-    }
-    fgets(read_file, 32, fptr);
-    //s.inode_bitmap_addr = atoi(read_file);
-    */
-
     if (pinum < 0 || name == NULL || superblock->num_inodes < pinum){
         return -1;
     }
+
+    // seek to inode bitmap
     super_t s = *superblock;
-    int inode_region_addr = s.inode_region_addr;
-    return 0;
+    int inode_bitmap_addr = s.inode_bitmap_addr; // is it inode_bitmap_addr?
+
+    // check if pinum is allocated
+    if (inode_bitmap_addr == 0){
+        return -1;
+    }
+
+    // seek to inode
+    long addr = (long)(fs_img + s.inode_region_addr + (pinum * 4096));
+    inode_t inode;
+    memcpy(&inode, (void*)addr, sizeof(inode_t));
+
+    // read inode
+    if (inode.type != UFS_DIRECTORY){
+        return -1;
+    }
+
+    // number of directory entries
+    int num_dir_ent = (inode.size)/sizeof(dir_ent_t);
+
+    // number of used data blocks
+    int num_data_blocks = inode.size/4096;
+
+    // seek to block
+    dir_ent_t arr[sizeof(inode.direct)];
+    read(fd, &arr, inode.size);
+
+    // iterate through and check 
+    for (int i = 0; i < sizeof(arr); i++){ // is it sizeof(arr) and i++??
+        if (strcmp(arr[i].name, name) == 0){
+            fsync(fd);
+            return arr[i].inum;
+        }
+    }
+
+    fsync(fd);
+    return -1;
 }
 int Stat(int inum, MFS_Stat_t *m){
     /*
@@ -74,6 +76,32 @@ int Stat(int inum, MFS_Stat_t *m){
     return 0;
 }
 int Write(int inum, char *buffer, int offset, int nbytes){
+    super_t *superblock; // will be a global variable after next git push
+
+    super_t s = *superblock;
+
+    int i_r_a = s.inode_region_addr;
+
+    long addr = (long)(fs_img + s.inode_region_addr + (inum * 4096));
+    inode_t inode;
+    memcpy(&inode, (void*)addr, sizeof(inode_t));
+
+    if(inode.type == UFS_DIRECTORY){
+        return -1;
+    }
+
+    // number of directory entries
+    int num_dir_ent = (inode.size)/sizeof(dir_ent_t);
+
+    for (int i = 0; i < num_dir_ent; i++){
+        if (1){//inode.direct[i].inum == inum){
+            // figure out the actual offset
+            // use write() to write buffer of size nbytes to a place in image file
+        }
+    }
+
+    //inum is an index into the inode //use the func write()
+
     return 0;
 }
 int Read(int inum, char *buffer, int offset, int nbytes){
@@ -151,9 +179,6 @@ int main(int argc, char *argv[]) {
         }
 
         switch(message.func){
-            case INIT:
-                Init(message.hostname, message.port, addr);
-                break;
             case LOOKUP:
                 Lookup(message.pinum, message.name, superblock);
                 break;

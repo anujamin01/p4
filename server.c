@@ -14,6 +14,11 @@
 int fd = -1;
 void * fs_img;
 super_t *superblock;
+
+typedef struct {
+    dir_ent_t entries[128];
+} dir_block_t;
+
 // TODO: fsync() after making some change to the file system
 // so probably fsync() at the end of each method?
 
@@ -61,7 +66,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr){
 int Lookup(int pinum, char *name){
     // TODO:
     // from image file
-    // from ufs.h, figure out where in the super_t struct we want to look. 
+    // from ufs.h, figure out where in the super_t struct we want to look.
     // We will get a dir_ent_t if valid.
     // use the inum to get the inode_t
     // the first element of unsigned int direct[DIRECT_PTRS]; will be the pinum
@@ -75,46 +80,71 @@ int Lookup(int pinum, char *name){
     if(checkInodeAllocated(pinum) == 0) return -1;
 
     // seek to inode
-    long addr = (long)(fs_img + s.inode_region_addr + (pinum * 4096));
+    long addr = (long)(fs_img + s.inode_region_addr + (pinum * UFS_BLOCK_SIZE));
     inode_t inode;
     memcpy(&inode, (void*)addr, sizeof(inode_t));
 
     // read inode
-    if (inode.type != UFS_DIRECTORY){
+    if (inode.type != MFS_DIRECTORY){
         return -1;
     }
 
-    // number of directory entries
+    // number of directory entries? Might have to change
     int num_dir_ent = (inode.size)/sizeof(dir_ent_t);
 
     // number of used data blocks
-    int num_data_blocks = inode.size / 4096; //TODO: Fix 500 / 4096 = 0 
-    if(inode.size % 4096 != 0) num_data_blocks++;
+    int num_data_blocks = inode.size / UFS_BLOCK_SIZE; //TODO: Fix 500 / 4096 = 0 
+    if(inode.size % UFS_BLOCK_SIZE != 0) num_data_blocks++;
 
     int x = inode.size; //AMOUNT of BYTES in the file. 4100 bytes 2 data blocks
+
     dir_ent_t arr[num_dir_ent];
+    
     //4100 - 4096 = 4
     //seek to second data block, reading last 4 bytes
+    
+    // why can't we just do this only??
+    // guessing cause 2 address in direct array could correspond to same thing
+    // if so, how to handle that??
+
+    for(int i = 0; i <= num_data_blocks; i++){
+        long curr_data_region = inode.direct[i]*UFS_BLOCK_SIZE;
+
+        dir_block_t db;
+        memcpy(&db, (void*)curr_data_region, UFS_BLOCK_SIZE);
+        for (size_t i = 0; i < sizeof(db.entries); i++)
+        {
+             if(strcmp(db.entries[i].name, name) == 0){
+                return db.entries[i].inum;
+             }
+        }
+    }
+    return -1;
+}
+
+/*
     int i = 0;
     while(x > 0 && i < num_dir_ent){
         if (inode.direct[i++] == -1){
             continue;
         }
-        long curr_data_region = superblock->data_region_addr + inode.direct[i];
+        long curr_data_region = inode.direct[i]*UFS_BLOCK_SIZE;
         //read(curr_data_region, &name, 28);
         dir_ent_t currEnt;
         memcpy(&currEnt, (void*)curr_data_region, 32);
         arr[i] = currEnt;
         i++;
+        x-=4096
     }
 
-    for (int i = 0; i < num_dir_ent; i++){
-        if (strcmp(arr[i].name,name) == 0){
-            return arr[i].inum;
+    for (int j = 0; j < i; j++){
+        if (strcmp(arr[j].name,name) == 0){
+            return arr[j].inum;
         }
     }
     return -1;
-}
+*/
+
 int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ // TODO: include client and server message for parameters
     // check for invalid inum or invalid mfs_stat
     if (inum < 0 || superblock->num_inodes < inum){
@@ -123,7 +153,7 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ 
     }
     // check that the inode actually exist looking at the bitmap
     
-    long inode_addr = (long)(fs_img + superblock->inode_region_addr + inum * 4096);
+    long inode_addr = (long)(fs_img + superblock->inode_region_addr + inum * UFS_BLOCK_SIZE);
     inode_t inode;
     memcpy(&inode,(void*)inode_addr,sizeof(inode_t));
     //Get inode bitmap, does this work?
@@ -162,6 +192,13 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr){ 
     */
 }
 int Write(int inum, char *buffer, int offset, int nbytes){
+    long addr = (long)(fs_img + superblock->inode_region_addr + (inum * UFS_BLOCK_SIZE));
+    inode_t inode;
+    memcpy(&inode, (void*)addr, sizeof(inode_t));
+    if (inode.type == MFS_DIRECTORY){
+        return -1;
+    }
+    long curr_data_region = superblock->data_region_addr + inode.direct[0];
     return 0;
 }
 int Read(int inum, char *buffer, int offset, int nbytes){

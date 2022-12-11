@@ -170,8 +170,7 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
 
 int Write(int inum, char *buffer, int offset, int nbytes)
 {
-    // are files 4096 bytes?
-    if (inum < 0 || superblock->num_inodes < inum || nbytes < 0 || nbytes > UFS_BLOCK_SIZE || offset < 0)
+    if (inum < 0 || superblock->num_inodes < inum || nbytes < 0 || offset < 0)
     {
         return -1;
     }
@@ -182,12 +181,44 @@ int Write(int inum, char *buffer, int offset, int nbytes)
     {
         return -1;
     }
-    long curr_data_region = (inode.direct[0] * UFS_BLOCK_SIZE) + offset;
-    write(curr_data_region, buffer, nbytes);
+
+    // TODO:
+    // the index in direct is: offset / 4096
+    // first block: n = (offset % 4096 + nbytes) - 4096
+    // next blocks: nbytes -  n
+    // what if we need to write to next block?
+    // what if the next block is not allocated?
+
+    int offset_index = offset / UFS_BLOCK_SIZE;
+
+    // start of data region where we need to write
+    int start_data_region = inode.direct[offset_index];
+
+    // how much to write in the next block
+    long next_block_amount = (long)((offset % UFS_BLOCK_SIZE) + nbytes) - UFS_BLOCK_SIZE;
+
+    // how much to write in the first block
+    long first_block_amount = nbytes - next_block_amount;
+
+    // write to first block
+    write(start_data_region, buffer, first_block_amount);
+
+    while(next_block_amount > 0){
+        if (inode.direct[offset_index + 1] == -1){
+            // allocate new block
+            // inode.direct[offset_index + 1] = allocateBlock();
+            inode.direct[offset_index + 1] = superblock->data_region_addr + (offset_index + 1);
+        } else{
+            // write to next block
+            write(inode.direct[offset_index + 1], buffer, next_block_amount);
+        }
+        next_block_amount -= UFS_BLOCK_SIZE;
+    }
 
     fsync(fd);
     return 0;
 }
+
 int Read(int inum, char *buffer, int offset, int nbytes)
 {
     long addr = (long)(fs_img + superblock->inode_region_addr + (inum * UFS_BLOCK_SIZE));

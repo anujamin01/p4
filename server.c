@@ -14,6 +14,8 @@ int fd = -1;
 void *fs_img;
 super_t *superblock;
 
+// TODO: use fsync() in some functions
+
 // TODO: fill these up in INIT
 typedef struct
 {
@@ -49,7 +51,7 @@ If not allocated, return -1 else return 0
 */
 unsigned int checkInodeAllocated(int pinum)
 {
-    uint bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
+    unsigned int bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
     unsigned int *bits = malloc(sizeof(unsigned int) * bitmapSize); // malloc bitmap :)
     memcpy(bits, fs_img + superblock->inode_bitmap_addr, bitmapSize * sizeof(unsigned int));
 
@@ -72,6 +74,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr)
     data_bitmap d_bitmap;
     //memcpy(&d_bitmap, (void *)superblock->data_bitmap_addr, sizeof(data_bitmap));
 
+    fsync(fd);
     return 0;
 }
 
@@ -119,6 +122,7 @@ int Lookup(int pinum, char *name)
         {
             if (strcmp(db.entries[i].name, name) == 0)
             {
+                fsync(fd);
                 return db.entries[i].inum;
             }
         }
@@ -142,7 +146,7 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
     memcpy(&inode, (void *)inode_addr, sizeof(inode_t));
     // Get inode bitmap, does this work?
 
-    uint bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
+    unsigned int bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
     unsigned int *bits = malloc(sizeof(unsigned int) * bitmapSize); // malloc bitmap :)
     memcpy(bits, fs_img + superblock->inode_bitmap_addr, bitmapSize * sizeof(unsigned int));
 
@@ -159,11 +163,18 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
     server_msg.returnCode = 0;
     server_msg.m = m;
     UDP_Write(fd, &addr, (void *)&server_msg, sizeof(server_msg));
+    
+    fsync(fd);
     return 0;
 }
 
 int Write(int inum, char *buffer, int offset, int nbytes)
 {
+    // are files 4096 bytes?
+    if (inum < 0 || superblock->num_inodes < inum || nbytes < 0 || nbytes > UFS_BLOCK_SIZE || offset < 0)
+    {
+        return -1;
+    }
     long addr = (long)(fs_img + superblock->inode_region_addr + (inum * UFS_BLOCK_SIZE));
     inode_t inode;
     memcpy(&inode, (void *)addr, sizeof(inode_t));
@@ -173,11 +184,23 @@ int Write(int inum, char *buffer, int offset, int nbytes)
     }
     long curr_data_region = (inode.direct[0] * UFS_BLOCK_SIZE) + offset;
     write(curr_data_region, buffer, nbytes);
+
+    fsync(fd);
     return 0;
 }
 int Read(int inum, char *buffer, int offset, int nbytes)
 {
-    printf("Need to implement\n");
+    long addr = (long)(fs_img + superblock->inode_region_addr + (inum * UFS_BLOCK_SIZE));
+    inode_t inode;
+    memcpy(&inode, (void *)addr, sizeof(inode_t));
+    if (inode.type == MFS_DIRECTORY)
+    {
+        return -1;
+    }
+    long curr_data_region = (inode.direct[0] * UFS_BLOCK_SIZE) + offset;
+    read(curr_data_region, buffer, nbytes);
+
+    fsync(fd);
     return 0;
 }
 int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr)
@@ -187,10 +210,12 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     {
         return -1;
     }
+
     // check that the pinode actually exist looking at the bitmap
     long pinode_addr = (long)(fs_img + superblock->inode_region_addr + pinum * 4096);
     inode_t pinode;
     memcpy(&pinode, (void *)pinode_addr, sizeof(inode_t));
+
     // pinode has not been allocated DNE
     if (pinode.size == 0)
     {
@@ -198,10 +223,12 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         return -1;
     }
 
+    fsync(fd);
     return 0;
 }
 int Unlink(int pinum, char *name)
 {
+    fsync(fd);
     return 0;
 }
 int Shutdown()

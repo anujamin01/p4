@@ -177,6 +177,7 @@ int Write(int inum, char *buffer, int offset, int nbytes)
 }
 int Read(int inum, char *buffer, int offset, int nbytes)
 {
+    printf("Need to implement\n");
     return 0;
 }
 int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr)

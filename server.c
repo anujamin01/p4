@@ -182,7 +182,9 @@ int Read(int inum, char *buffer, int offset, int nbytes)
 int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr)
 {
     // if invalid pnum or invalid/too long of name
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > BUFFER_SIZE)
+    if (pinum < 0 || name == NULL 
+    || superblock->num_inodes < pinum || strlen(name) > 28
+    || checkInodeAllocated(pinum) == 0)
     {
         return -1;
     }
@@ -190,13 +192,43 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     long pinode_addr = (long)(fs_img + superblock->inode_region_addr + pinum * 4096);
     inode_t pinode;
     memcpy(&pinode, (void *)pinode_addr, sizeof(inode_t));
-    // pinode has not been allocated DNE
-    if (pinode.size == 0)
-    {
-        // server_msg.returnCode = -1;
+
+    // check if file already exists within parent directory 
+    if (Lookup(pinum,name) == 0){
+        return 0;
+    }
+    // file does not exist so create it 
+    //pinode.direct
+    // find 1st direct ptr that's not empty
+    int i = 0;
+    for(i = 0; i < 30; i++){
+        // if we find unallocated direct pointer allocate it!
+        if (pinode.direct[i] == -1){
+            long curr_data_region = pinode.direct[i] * UFS_BLOCK_SIZE;
+            dir_block_t db;
+            memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
+            for (size_t j = 0; j < sizeof(db.entries); j++){
+                if (db.entries[j].inum == -1){ // if we found unallocated inum
+                    // try to allocate it and set the name
+                    if (pinum + i < superblock->num_inodes){
+                        db.entries[j].inum = pinum + i;
+                        strcpy(db.entries[j].name, name);
+                        // set the type for new inode
+                        inode_t inode;
+                        inode.type = type;
+                        
+                        return 0;
+                    }
+                    return -1;
+                }
+            }
+            return 0;
+        }
+    }
+    // couldn't create file
+    if (i == 30){
         return -1;
     }
-
     return 0;
 }
 int Unlink(int pinum, char *name)

@@ -55,11 +55,13 @@ int main(int argc, char *argv[]) {
 	perror("open");
 	exit(1);
     }
+    /*
 void set_bit(unsigned int *bitmap, int position) {
    int index = position / 32;
    int offset = 31 - (position % 32);
    bitmap[index] |=  0x1 << offset;
 }
+*/
     assert(num_inodes >= 32);
     assert(num_data >= 32);
 

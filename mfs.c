@@ -56,8 +56,8 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
     UDP_Read(fd, &ret_addr, (char*)&server_message, sizeof(server_message));
     m->type = server_message.type;
     m->type = server_message.size;
-
-    return 0;
+    return server_message.returnCode;
+    //return 0;
 }
 
 int MFS_Write(int inum, char *buffer, int offset, int nbytes){

@@ -29,4 +29,5 @@ typedef struct{
     int size;
     char buffer[4096];
     int returnCode;
+    MFS_Stat_t *m;
 } s_msg_t;

@@ -25,7 +25,7 @@ int MFS_Lookup(int pinum, char *name){
     if (pinum < 0){
         return -1;
     }
-    if(strlen(name) > 100 || name == NULL){
+    if(strlen(name) > 28 || name == NULL){
         return -1;
     }
     

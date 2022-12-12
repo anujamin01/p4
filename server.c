@@ -77,7 +77,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr)
 
 int Lookup(int pinum, char *name)
 {
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum)
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
     {
         return -1;
     }
@@ -134,6 +134,7 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
         server_msg.returnCode = -1;
         return -1;
     }
+    // TODO: check if inode allocated
 
     // check that the inode actually exist looking at the bitmap
 
@@ -164,6 +165,12 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
 
 int Write(int inum, char *buffer, int offset, int nbytes)
 {
+    if (inum < 0 || inum > superblock->num_inodes || nbytes < 0 || nbytes > 4096){
+        return -1;
+    }
+    //int block_num = (inum/32) * UFS_BLOCK_SIZE;
+    //int off = (inum % 32 ) * sizeof(inode_t);
+    //long addr = (long)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE + block_num + off);
     long addr = (long)(fs_img + superblock->inode_region_addr + (inum * UFS_BLOCK_SIZE));
     inode_t inode;
     memcpy(&inode, (void *)addr, sizeof(inode_t));
@@ -188,6 +195,9 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     {
         return -1;
     }
+    //int block_num = (inum/32) * UFS_BLOCK_SIZE;
+    //int off = (inum % 32 ) * sizeof(inode_t);
+    //long pinode_addr = (long)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE + block_num + off);
     // check that the pinode actually exist looking at the bitmap
     long pinode_addr = (long)(fs_img + superblock->inode_region_addr + pinum * 4096);
     inode_t pinode;
@@ -237,7 +247,12 @@ int Unlink(int pinum, char *name)
 }
 int Shutdown()
 {
+    int rc = UDP_Close(fd);
+    if (rc < 0){
+        exit(-1);
+    }
     fsync(fd);
+    close(fd);
     exit(0);
 }
 

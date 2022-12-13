@@ -3,13 +3,16 @@
 #include "msg.h"
 #include <string.h>
 
-int online = 0;
+int on = 0;
 
 struct sockaddr_in server_addr;
 int fd;
 
 int MFS_Init(char *hostname, int port){
+    //port = 11011;
+    //printf("asffsffgdsasfgffddfghgfdsadfghdsadfghjdsadfhjksasdfgjksadfghjsdadghjgdsaDAGHJK\n");
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
+    //printf("rc: %d\n", rc);
     if(rc != 0){
         printf("Failed to set up server address\n");
         return rc;
@@ -19,7 +22,7 @@ int MFS_Init(char *hostname, int port){
 }
 
 int MFS_Lookup(int pinum, char *name){
-    if(!online){
+    if(!on){
         return -1;
     }
     if (pinum < 0){
@@ -105,7 +108,8 @@ int MFS_Creat(int pinum, int type, char *name){
     m.func = CREAT;
     m.pinum = pinum;
     m.type = type;
-    memcpy(name, m.name, sizeof(name));
+    unsigned long name_size = sizeof(name);
+    memcpy(name, m.name, name_size);
 
     UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
 
@@ -121,7 +125,8 @@ int MFS_Unlink(int pinum, char *name){
 
     m.func = UNLINK;
     m.pinum = pinum;
-    memcpy(name, m.name, sizeof(name));
+    unsigned long name_size = sizeof(name);
+    memcpy(name, m.name, name_size);
 
     UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
 
@@ -141,6 +146,8 @@ int MFS_Shutdown(){
 
     struct sockaddr_in ret_addr;
     UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+
+    printf("return code: %d\n", s_m.returnCode);
 
     return s_m.returnCode;
 }

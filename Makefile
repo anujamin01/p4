@@ -2,7 +2,12 @@ CC     := gcc
 CFLAGS := -Werror  #TODO: Readd -Wall
 
 SRCS   := client.c \
-	server.c 
+	server.c \
+
+#\
+	mfs.c \
+	mkfs.c \
+	udp.c\
 
 OBJS   := ${SRCS:c=o}
 PROGS  := ${SRCS:.c=}
@@ -11,7 +16,12 @@ PROGS  := ${SRCS:.c=}
 all: ${PROGS}
 
 ${PROGS} : % : %.o Makefile
-	${CC} $< -o $@ udp.c
+	${CC} $< -o $@ udp.c mfs.c
+
+
+lib:
+	gcc -fPIC -c mfs.c -o mfs.o
+	gcc -shared mfs.o udp.h udp.c -o libmfs.so
 
 clean:
 	rm -f ${PROGS} ${OBJS}

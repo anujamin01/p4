@@ -7,12 +7,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define BUFFER_SIZE (1000)
 
-int fd = -1;
+int file_d = -1;
 void *fs_img;
 super_t *superblock;
+int sd;
 
 // TODO: use fsync() in some functions
 
@@ -67,6 +69,7 @@ unsigned int checkInodeAllocated(int pinum)
 
 int Init(char *hostname, int port, struct sockaddr_in addr)
 {
+    printf("Initializing\n");
     // fill bitmaps
     inode_bitmap i_bitmap;
     //memcpy(&i_bitmap, (void *)superblock->inode_bitmap_addr, sizeof(inode_bitmap));
@@ -74,7 +77,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr)
     data_bitmap d_bitmap;
     //memcpy(&d_bitmap, (void *)superblock->data_bitmap_addr, sizeof(data_bitmap));
 
-    fsync(fd);
+    fsync(file_d);
     return 0;
 }
 
@@ -122,7 +125,7 @@ int Lookup(int pinum, char *name)
         {
             if (strcmp(db.entries[i].name, name) == 0)
             {
-                fsync(fd);
+                fsync(file_d);
                 return db.entries[i].inum;
             }
         }
@@ -162,9 +165,9 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
     m->type = inode.type;
     server_msg.returnCode = 0;
     server_msg.m = m;
-    UDP_Write(fd, &addr, (void *)&server_msg, sizeof(server_msg));
+    UDP_Write(file_d, &addr, (void *)&server_msg, sizeof(server_msg));
     
-    fsync(fd);
+    fsync(file_d);
     return 0;
 }
 
@@ -215,7 +218,7 @@ int Write(int inum, char *buffer, int offset, int nbytes)
         next_block_amount -= UFS_BLOCK_SIZE;
     }
 
-    fsync(fd);
+    fsync(file_d);
     return 0;
 }
 
@@ -231,7 +234,7 @@ int Read(int inum, char *buffer, int offset, int nbytes)
     long curr_data_region = (inode.direct[0] * UFS_BLOCK_SIZE) + offset;
     read(curr_data_region, buffer, nbytes);
 
-    fsync(fd);
+    fsync(file_d);
     return 0;
 }
 int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr)
@@ -254,28 +257,50 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         return -1;
     }
 
-    fsync(fd);
+    fsync(file_d);
     return 0;
 }
 int Unlink(int pinum, char *name)
 {
-    fsync(fd);
+    fsync(file_d);
     return 0;
 }
-int Shutdown()
+
+
+int Shutdown(s_msg_t server_msg, struct sockaddr_in addr)
 {
-    fsync(fd);
+    int rc = UDP_Close(file_d);
+    if(rc < 0){
+        server_msg.returnCode = -1;
+        printf("return code: %d\n", server_msg.returnCode);
+        exit(-1);
+    }
+    server_msg.returnCode = 0;
+    UDP_Write(file_d, &addr, (void *)&server_msg, sizeof(server_msg));
+    printf("return code: %d\n", server_msg.returnCode);
+    fsync(file_d);
+    close(file_d);
     exit(0);
+}
+
+void intHandler(int dummy) {
+    UDP_Close(sd);
+    exit(130);
 }
 
 // server code
 int main(int argc, char *argv[])
 {
+    printf(
+        "Server has begun, esteemd Prasun!!!\n"
+    );
+    signal(SIGINT, intHandler);
     assert(argc == 3);
     int port_num = atoi(argv[1]);
     const char *img_path = argv[2];
 
-    int sd = UDP_Open(port_num);
+    //port_num = 11011;
+    sd = UDP_Open(port_num);
 
     if (sd <= 0)
     {
@@ -288,14 +313,14 @@ int main(int argc, char *argv[])
     }
     assert(sd > -1);
     struct stat file_info;
-    int file_fd = open(img_path, O_RDWR | O_APPEND);
-    if (fstat(file_fd, &file_info) != 0)
+    int another_file_fd = open(img_path, O_RDWR | O_APPEND);
+    if (fstat(another_file_fd, &file_info) != 0)
     {
         perror("Fstat failed");
     }
 
     // TODO: fix parameters
-    fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, file_fd, 0);
+    fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, another_file_fd, 0);
 
     superblock = (super_t *)fs_img;
     int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
@@ -317,16 +342,19 @@ int main(int argc, char *argv[])
         // super_t s;
         printf("server:: waiting...\n");
         int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
+        printf("MESSAGE!!!!!!: %d\n", message.func);
 
         if (rc < 0)
         {
+            printf("MESSAGE!!!!!!: %d\n", message.func);
             return -1;
         }
 
+        printf("MESSAGE!!!!!!: %d\n", message.func);
         switch (message.func)
         {
         case INIT:
-            Init(message.hostname, message.port, addr);
+            //Init(message.hostname, message.port, addr);
             break;
         case LOOKUP:
             Lookup(message.pinum, message.name);
@@ -347,7 +375,7 @@ int main(int argc, char *argv[])
             Unlink(message.pinum, message.name);
             break;
         case SHUTDOWN:
-            Shutdown();
+            Shutdown(server_message, addr);
             break;
         }
 

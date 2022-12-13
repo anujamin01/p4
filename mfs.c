@@ -9,15 +9,12 @@ struct sockaddr_in server_addr;
 int fd;
 
 int MFS_Init(char *hostname, int port){
-    //port = 11011;
-    //printf("asffsffgdsasfgffddfghgfdsadfghdsadfghjdsadfhjksasdfgjksadfghjsdadghjgdsaDAGHJK\n");
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
-    //printf("rc: %d\n", rc);
     if(rc != 0){
         printf("Failed to set up server address\n");
         return rc;
     }
-    fd = UDP_Open(port);
+    fd = UDP_Open(7612);
     return 0;
 }
 
@@ -49,7 +46,6 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
     msg_t message;
     s_msg_t server_message;
     message.func = STAT;
-    message.m = m;
     message.inum = inum;
     
     UDP_Write(fd, &server_addr, (char* )&message, sizeof(message));
@@ -57,8 +53,7 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
     struct sockaddr_in ret_addr;
 
     UDP_Read(fd, &ret_addr, (char*)&server_message, sizeof(server_message));
-    m->type = server_message.type;
-    m->type = server_message.size;
+    memcpy(&server_message.m, m, sizeof(MFS_Stat_t));
     return server_message.returnCode;
     //return 0;
 }

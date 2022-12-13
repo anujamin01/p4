@@ -133,7 +133,7 @@ int Lookup(int pinum, char *name)
     return -1;
 }
 
-int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
+int Stat(int inum, s_msg_t server_msg, struct sockaddr_in addr)
 {
     // check for invalid inum or invalid mfs_stat
     if (inum < 0 || superblock->num_inodes < inum)
@@ -160,11 +160,10 @@ int Stat(int inum, MFS_Stat_t *m, s_msg_t server_msg, struct sockaddr_in addr)
         return -1;
     }
     free(bits);
-
-    m->size = inode.size;
-    m->type = inode.type;
+    
     server_msg.returnCode = 0;
-    server_msg.m = m;
+    server_msg.m.size = inode.size;
+    server_msg.m.type = inode.type;
     UDP_Write(file_d, &addr, (void *)&server_msg, sizeof(server_msg));
     
     fsync(file_d);
@@ -269,14 +268,14 @@ int Unlink(int pinum, char *name)
 
 int Shutdown(s_msg_t server_msg, struct sockaddr_in addr)
 {
-    int rc = UDP_Close(file_d);
-    if(rc < 0){
-        server_msg.returnCode = -1;
-        printf("return code: %d\n", server_msg.returnCode);
-        exit(-1);
-    }
+    // int rc = UDP_Close(file_d);
+    // if(rc < 0){
+    //     server_msg.returnCode = -1;
+    //     printf("return code: %d\n", server_msg.returnCode);
+    //     exit(-1);
+    // }
     server_msg.returnCode = 0;
-    UDP_Write(file_d, &addr, (void *)&server_msg, sizeof(server_msg));
+    UDP_Write(sd, &addr, (void *)&server_msg, sizeof(server_msg));
     printf("return code: %d\n", server_msg.returnCode);
     fsync(file_d);
     close(file_d);
@@ -360,7 +359,7 @@ int main(int argc, char *argv[])
             Lookup(message.pinum, message.name);
             break;
         case STAT:
-            Stat(message.inum, message.m, server_message, addr);
+            Stat(message.inum, server_message, addr);
             break;
         case WRITE:
             Write(message.inum, message.buffer, message.offset, message.nbytes);

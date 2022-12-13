@@ -6,6 +6,26 @@
 #include "udp.h"
 #define BUFFER_SIZE (1000)
 
+/*
+all: mkfs server mfs.so.l mfs.o client
+
+mkfs: mkfs.c ufs.h 
+	gcc mkfs.c -o mkfs 
+
+server: server.c ufs.h udp.h udp.c msg.h
+	gcc server.c udp.c -o server 
+
+mfs.so.l: mfs.o udp.c
+#gcc -shared -Wl,-soname,libmfs.so -o libmfs.so mfs.o udp.o -lc
+	gcc -shared mfs.o udp.h udp.c -o libmfs.o
+
+mfs.o: mfs.c udp.c
+	gcc -fPIC -g -c -Wall mfs.c udp.c
+
+client: client.c mfs.h udp.c
+	gcc client.c udp.c -Wall -L. -lmfs -o client
+*/
+
 // client code
 int main(int argc, char *argv[]) {
     /*

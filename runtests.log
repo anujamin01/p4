@@ -1,0 +1,42 @@
+('starting', 'build')
+
+**********************************************************************
+
+Test build
+build project using make
+
+**********************************************************************
+Trying to build project using make
+make
+make: Nothing to be done for 'all'.
+
+
+test build PASSED
+ (build project using make)
+
+('starting', 'shutdown')
+
+**********************************************************************
+
+Test shutdown
+init server and client then call shutdown
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 5597
+/tmp/tmpWtJQG_/p/server 5597 ./test.img
+return code: 32693
+Failure: MFS_Shutdown returned failure
+
+
+test shutdown FAILED
+ (init server and client then call shutdown)
+ MFS_Shutdown returned failure
+
+Skipped 25 tests.
+To keep testing after failing a test, use flag '-c' or '--continue'

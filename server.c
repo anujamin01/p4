@@ -9,6 +9,44 @@
 #include <unistd.h>
 #include <signal.h>
 
+// How I think inode_t works
+    /*
+    pinode: type, size, direct
+                        |
+                        v
+                        [-1, 50, 100, -1]
+                              |
+                              |
+                              v               
+                             50th
+        data region: [...,[inum, name],...]
+    */
+
+   // What I think we r suppose to do
+   /*
+   pinum -> dir
+            |
+            v 
+            inode -> direct
+                        |
+                        v
+                        [...,block with new file,...]
+                            |
+                            v
+        data region: [...,new file: [inum, name],...]
+                            |
+                            v
+                        inode_t: type, size, direct
+                                                |
+                                                v
+                                    if dir:   [dot, dot_dot, -1, -1,...]
+                                                |      |
+                                                |       -> [inode_num, ".."]
+                                                v
+                                            [inode_num, "."]
+
+   */
+
 #define BUFFER_SIZE (1000)
 
 int file_d = -1;
@@ -335,7 +373,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
                         set_bit((unsigned int*)data_bits, n);
 
                         //TODO: Re-write out data bitmap, directory inode, and new datablock to disk.
-                        long curr_data_region = (long)(fs_img + (s.data_region_addr) * UFS_BLOCK_SIZE);
+
                         
                         /*
                             1. Pull inode bitmap
@@ -351,6 +389,10 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
                         */
 
 
+                        // TODO: not s.data_region_addr, what is it?
+                        long curr_data_region = (long)(fs_img + (s.data_region_addr * UFS_BLOCK_SIZE));
+
+
                         // Re-write new datablock to disk
                         pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);  
 
@@ -360,54 +402,21 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         }
     }
 
-    // How I think inode_t works
-    /*
-    pinode: type, size, direct
-                        |
-                        v
-                        [-1, 50, 100, -1]
-                              |
-                              |
-                              v               
-                             50th
-        data region: [...,[inum, name],...]
-    */
-
-   // What I think we r suppose to do
-   /*
-   pinum -> dir
-            |
-            v 
-            inode -> direct
-                        |
-                        v
-                        [...,block with new file,...]
-                            |
-                            v
-        data region: [...,new file: [inum, name],...]
-                            |
-                            v
-                        inode_t: type, size, direct
-                                                |
-                                                v
-                                    if dir:   [dot, dot_dot, -1, -1,...]
-                                                |      |
-                                                |       -> [inode_num, ".."]
-                                                v
-                                            [inode_num, "."]
-
-   */
-
     // Re-write directory inode
 
     // Finally, we write out our new inode
-    inode_t new_inode;
-    new_inode.type = type;
+
+    //long new_address = (long)(fs_img + s.inode_region_addr * UFS_BLOCK_SIZE + (inode_num * sizeof(inode_t)));
+    inode_t new_inode_t;
+    //memcpy(&new_inode_t, (void*)new_address, sizeof(inode_t));
+
+    new_inode_t.type = type;
 
     // check if it is dir. if so, fill with . and ..
     dir_block_t curr_db;
+    //memcpy(&curr_db, )
     if (type == MFS_DIRECTORY){
-        new_inode.size = 2 * sizeof(dir_ent_t);
+        new_inode_t.size = 2 * sizeof(dir_ent_t);
         
         strcpy(curr_db.entries[0].name, ".");
         curr_db.entries[0].inum = inode_num;
@@ -418,16 +427,21 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         for (int i = 2; i < 128; i++)
 	    curr_db.entries[i].inum = -1;
     }
+
     else{ // singular file
         new_inode.size = 0;
+
 
         for (int i = 0; i < 128; i++)
 	    curr_db.entries[i].inum = -1;
     }
 
     // Then something like this?:
-    //long curr_data_region = (long)(fs_img + (s.data_region_addr));
-    //pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);  
+    // TODO: not s.data_region_addr, what is it?
+    long curr_data_region = (long)(fs_img + s.inode_region_addr + (inode_num *sizeof(inode_t))); // index times size(inote_t)))//(s.data_region_addr * UFS_BLOCK_SIZE));
+    //pwrite(file_d, &)
+    //memcpy()
+    //pwrite(file_d, &curr_db, sizeof(dir_block_t), curr_data_region);  
 
     fsync(file_d);
     return -1;
@@ -485,13 +499,14 @@ int main(int argc, char *argv[])
     assert(sd > -1);
     struct stat file_info;
     int another_file_fd = open(img_path, O_RDWR | O_APPEND);
-    if (fstat(another_file_fd, &file_info) != 0)
+    file_d = another_file_fd;
+    if (fstat(file_d, &file_info) != 0) // was another_file_fd
     {
         perror("Fstat failed");
     }
 
     // TODO: fix parameters
-    fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, another_file_fd, 0);
+    fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
 
     superblock = (super_t *)fs_img;
     int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;

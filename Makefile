@@ -1,5 +1,5 @@
 CC     := gcc
-CFLAGS := -Werror  #TODO: Readd -Wall
+CFLAGS := -Werror 
 
 SRCS   := client.c \
 	server.c \

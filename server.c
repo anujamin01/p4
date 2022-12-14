@@ -245,7 +245,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     }
 
     super_t s = *superblock;
-    // if pinum unallocated not gord
+    // if pinum unallocated 
     if(checkInodeAllocated(pinum) == 0){
         return -1;
     }
@@ -254,7 +254,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         return 0;
     }
 
-    long address = (long)(fs_img + s.inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
+    long address = (long)(fs_img + s.inode_region_addr * UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
     inode_t pinode;
     memcpy(&pinode, (void*)address, sizeof(inode_t));
 
@@ -266,6 +266,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     for(int i = 0; i < s.num_inodes; i++){
         if(get_bit((unsigned int *)bits, i) == 0){
             inode_num = i;
+            set_bit((unsigned int*) bits, inode_num);
             break;
         }
     }
@@ -275,63 +276,138 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         return -1;
     }
 
+    //Write out the set inode bitmap to disk
+    pwrite(file_d, &bits, UFS_BLOCK_SIZE, UFS_BLOCK_SIZE * s.inode_bitmap_addr);
+
+
     // num of dir entries in the pinode
     int num_dir_ent = (pinode.size) / sizeof(dir_ent_t);
 
-     // number of directory entries
-    int num_data_blocks = pinode.size / UFS_BLOCK_SIZE;
-
-    for (int j = 0; j < num_data_blocks; j++){
+    // Writing to parent inode's directory entries, if space already exists
+    int spaceFound = 0;
+    for (int j = 0; j < DIRECT_PTRS; j++){
         if (pinode.direct[j] != -1){
             long curr_data_region = (long)(fs_img + (pinode.direct[j] * UFS_BLOCK_SIZE));
 
             dir_block_t db;
-            memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
+            memcpy(&db, (void*)curr_data_region, UFS_BLOCK_SIZE);
 
             for (int k = 0; k < num_dir_ent; k++){
                 if(db.entries[k].inum == -1){
                     db.entries[k].inum = inode_num;
                     strcpy(db.entries[k].name,name);
-
-                    // create new inode
-                    inode_t new_inode;
-                    new_inode.type = type;
-                    new_inode.size = 0;
-                    new_inode.direct[0] = -1;
-                    return 0;
+                    pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);
+                    spaceFound = 1;
+                    break;
                 }
             }   
         }
     }
+    //TODO: test to see if it is actually written :)
 
-    // if we get here, we need to allocate a new block
-    for (int l = 0; l < num_data_blocks; l++){
-        if (pinode.direct[l] == -1){
-            // allocate this block
-            unsigned int data_bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
-            memcpy(data_bits, fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
-            
-            int data_num = -1;
+    //Allocating a new data block to parent directory inode if the existing data blocks are full
+    if(!spaceFound){
+        // if we get here, we need to allocate a new block
+        unsigned int data_bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
+        memcpy(data_bits, fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
 
-            // find first unallocated data
-            for(int n = 0; n < s.num_data; n++){
-                if(get_bit((unsigned int *)data_bits, n) == 0){
-                    dir_ent_t new_dir_ent;
-                    new_dir_ent.inum = inode_num;
-                    strcpy(new_dir_ent.name, name);
-                    pinode.direct[l] = n;
-                    
-                    // create new inode
-                    inode_t new_inode;
-                    new_inode.type = type;
-                    new_inode.size = 0;
-                    new_inode.direct[0] = -1;
+        for (int l = 0; l < DIRECT_PTRS; l++){ // num_data_blocks
+            if (pinode.direct[l] == -1){
+                // allocate this block
+                int data_num = -1;
+                // find first unallocated data
+                for(int n = 0; n < s.num_data; n++){
+                    if(get_bit((unsigned int *)data_bits, n) == 0){ //!Allocated
+                        dir_block_t db;
+                        db.entries[0].inum = inode_num; //first entry is new dir_ent_t
+                        strcpy(db.entries[0].name, name);
+                        pinode.direct[l] = n + s.data_region_addr; //Current index in data bitmap + start of data region
+                        for(int i = 1; i < 128; i++){
+                            db.entries[i].inum = -1;
+                        }
 
-                    return 0;
+                        // Re-write out data bitmap done here, I think
+                        set_bit((unsigned int*)data_bits, n);
+
+                        //TODO: Re-write out data bitmap, directory inode, and new datablock to disk.
+                        long curr_data_region = (long)(fs_img + (s.data_region_addr));
+
+                        // Re-write new datablock to disk
+                        pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);            
+                    }
                 }
             }
         }
     }
+
+    // How I think inode_t works
+    /*
+    pinode: type, size, direct
+                        |
+                        v
+                        [-1, 50, 100, -1]
+                              |
+                              |
+                              v               
+                             50th
+        data region: [...,[inum, name],...]
+    */
+
+   // What I think we r suppose to do
+   /*
+   pinum -> dir
+            |
+            v 
+            inode -> direct
+                        |
+                        v
+                        [...,block with new file,...]
+                            |
+                            v
+        data region: [...,new file: [inum, name],...]
+                            |
+                            v
+                        inode_t: type, size, direct
+                                                |
+                                                v
+                                    if dir:   [dot, dot_dot, -1, -1,...]
+                                                |      |
+                                                |       -> [inode_num, ".."]
+                                                v
+                                            [inode_num, "."]
+
+   */
+
+    // Re-write directory inode
+
+    // Finally, we write out our new inode
+    inode_t new_inode;
+    new_inode.type = type;
+
+    // check if it is dir. if so, fill with . and ..
+    dir_block_t curr_db;
+    if (type == MFS_DIRECTORY){
+        new_inode.size = 2 * sizeof(dir_ent_t);
+        
+        strcpy(curr_db.entries[0].name, ".");
+        curr_db.entries[0].inum = inode_num;
+
+        strcpy(curr_db.entries[1].name, "..");
+        curr_db.entries[1].inum = pinum;
+
+        for (int i = 2; i < 128; i++)
+	    curr_db.entries[i].inum = -1;
+    }
+    else{
+        new_inode.size = 0;
+
+        for (int i = 0; i < 128; i++)
+	    curr_db.entries[i].inum = -1;
+    }
+
+    // Then something like this?:
+    //long curr_data_region = (long)(fs_img + (s.data_region_addr));
+    //pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);  
 
     fsync(file_d);
     return -1;
@@ -389,11 +465,13 @@ int main(int argc, char *argv[])
     unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
 
     inode_t *inodes = fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE;
-
-    printf("Max inum number is: %i\n", max_inodes);
+    
+    /*
+    printf("Max inum number is: %i\n", max_inodes); 
     printf("Number of inode blocks %i\n", superblock->inode_region_len);
     printf("Number of data blocks: %i\n", superblock->data_region_len);
     printf("Waiting for client messages\n");
+    */
 
     while (1)
     {

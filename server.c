@@ -300,6 +300,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     memcpy(bits, fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
     
     int inode_num = -1;
+    // int inode_idx
     // find first unallocated inode
     for(int i = 0; i < s.num_inodes; i++){
         if(get_bit((unsigned int *)bits, i) == 0){
@@ -316,7 +317,11 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
 
     //Write out the set inode bitmap to disk
     pwrite(file_d, &bits, UFS_BLOCK_SIZE, UFS_BLOCK_SIZE * s.inode_bitmap_addr);
-
+    
+    // create inode and fill with relevant info
+    inode_t inode;
+    inode.size = 0;
+    inode.type = type;
 
     // num of dir entries in the pinode
     int num_dir_ent = (pinode.size) / sizeof(dir_ent_t);
@@ -345,7 +350,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
 
     //Allocating a new data block to parent directory inode if the existing data blocks are full
     if(!spaceFound){
-        // if we get here, we need to allocate a new block
+        // if we get here, wesize need to allocate a new block
         unsigned int data_bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
         memcpy(data_bits, fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
 
@@ -369,11 +374,28 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
 
                         //TODO: Re-write out data bitmap, directory inode, and new datablock to disk.
 
+                        
+                        /*
+                            1. Pull inode bitmap
+                            2. Find first available spot in inode table by iterating through bitmap
+                            3. Mark that bit as a 1, indicating we are now putting an inode in that spot
+                            4. Create an inode struct, fill it with relevant info
+                            5. Pull datablock bitmap
+                            6. Find first available data block by iteration
+                            7. Mark that spot in the bitmap as being filled
+                            8. Put the address of that data block in your new inode's direct pointer list
+                            9. memcpy() (or something else idk) your inode into the inode table
+                               at the index you found in step 2
+                        */
+
+
                         // TODO: not s.data_region_addr, what is it?
                         long curr_data_region = (long)(fs_img + (s.data_region_addr * UFS_BLOCK_SIZE));
 
+
                         // Re-write new datablock to disk
-                        pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);            
+                        pwrite(file_d, &db, sizeof(dir_block_t), curr_data_region);  
+
                     }
                 }
             }
@@ -405,8 +427,10 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         for (int i = 2; i < 128; i++)
 	    curr_db.entries[i].inum = -1;
     }
-    else{
-        new_inode_t.size = 0;
+
+    else{ // singular file
+        new_inode.size = 0;
+
 
         for (int i = 0; i < 128; i++)
 	    curr_db.entries[i].inum = -1;
@@ -425,6 +449,20 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
 
 int Unlink(int pinum, char *name)
 {
+    /*
+    TODO:
+    removes the file or directory name from the directory specified by pinum. 0 on success, -1 on failure.
+    Failure modes: pinum does not exist, directory is NOT empty. Note that the name not existing is NOT 
+    a failure by our definition (think about why this might be).
+    */
+
+    // invalid name or inode
+    if (pinum < 0 || pinum > superblock->num_inodes || name == NULL || strlen(name) > 28){
+        return -1;
+    }
+
+
+
     fsync(file_d);
     return 0;
 }

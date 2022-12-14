@@ -28,15 +28,40 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5597
-/tmp/tmpWtJQG_/p/server 5597 ./test.img
-return code: 32693
-Failure: MFS_Shutdown returned failure
+Starting server on port 9632
+/tmp/tmpT4ry9Q/p/server 9632 ./test.img
+Max inum number is: 32
+Number of inode blocks 1
+Number of data blocks: 32
+Waiting for client messages
+server:: waiting...
 
 
-test shutdown FAILED
+test shutdown PASSED
  (init server and client then call shutdown)
- MFS_Shutdown returned failure
 
-Skipped 25 tests.
+('starting', 'creat')
+
+**********************************************************************
+
+Test creat
+creat a file and check with lookup
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 7086
+/tmp/tmpT4ry9Q/p/server 7086 ./test.img
+Failure: MFS_Lookup returned failure inum=0 name='\xe0P\x07n'
+
+
+test creat FAILED
+ (creat a file and check with lookup)
+ MFS_Lookup returned failure inum=0 name='\xe0P\x07n'
+
+Skipped 19 tests.
 To keep testing after failing a test, use flag '-c' or '--continue'

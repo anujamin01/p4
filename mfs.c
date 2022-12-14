@@ -142,7 +142,5 @@ int MFS_Shutdown(){
     struct sockaddr_in ret_addr;
     UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
 
-    printf("return code: %d\n", s_m.returnCode);
-
     return s_m.returnCode;
 }

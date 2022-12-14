@@ -17,7 +17,6 @@ super_t *superblock;
 int sd;
 
 // TODO: use fsync() in some functions
-
 // TODO: fill these up in INIT
 typedef struct
 {
@@ -53,9 +52,8 @@ If not allocated, return -1 else return 0
 */
 unsigned int checkInodeAllocated(int pinum)
 {
-    unsigned int bitmapSize = UFS_BLOCK_SIZE / sizeof(unsigned int);
-    unsigned int *bits = malloc(sizeof(unsigned int) * bitmapSize); // malloc bitmap :)
-    memcpy(bits, fs_img + superblock->inode_bitmap_addr, bitmapSize * sizeof(unsigned int));
+    unsigned int *bits = malloc(UFS_BLOCK_SIZE); // malloc bitmap :)
+    memcpy(bits, fs_img + superblock->inode_bitmap_addr, UFS_BLOCK_SIZE);
 
     // if not allocated
     if (get_bit(bits, pinum) == 0)
@@ -69,7 +67,6 @@ unsigned int checkInodeAllocated(int pinum)
 
 int Init(char *hostname, int port, struct sockaddr_in addr)
 {
-    printf("Initializing\n");
     // fill bitmaps
     inode_bitmap i_bitmap;
     //memcpy(&i_bitmap, (void *)superblock->inode_bitmap_addr, sizeof(inode_bitmap));
@@ -83,7 +80,7 @@ int Init(char *hostname, int port, struct sockaddr_in addr)
 
 int Lookup(int pinum, char *name)
 {
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum)
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
     {
         return -1;
     }
@@ -93,7 +90,7 @@ int Lookup(int pinum, char *name)
         return -1;
 
     // seek to inode
-    long addr = (long)(fs_img + s.inode_region_addr + (pinum * UFS_BLOCK_SIZE));
+    long addr = (long)(fs_img + s.inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
     inode_t inode;
     memcpy(&inode, (void *)addr, sizeof(inode_t));
 
@@ -108,25 +105,25 @@ int Lookup(int pinum, char *name)
 
     // number of used data blocks
     int num_data_blocks = inode.size / UFS_BLOCK_SIZE; // TODO: Fix 500 / 4096 = 0
-    if (inode.size % UFS_BLOCK_SIZE != 0)
+    if (inode.size % UFS_BLOCK_SIZE != 0) // fixed here
         num_data_blocks++;
 
-    int x = inode.size; // AMOUNT of BYTES in the file. 4100 bytes 2 data blocks
+    int x = inode.size; // AMOUNT of BYTES in the file. 4100 bytes = 2 data blocks
 
     dir_ent_t arr[num_dir_ent];
 
     for (int i = 0; i <= num_data_blocks; i++)
     {
-        long curr_data_region = inode.direct[i] * UFS_BLOCK_SIZE;
+        long curr_data_region = (long)(fs_img + (inode.direct[i] * UFS_BLOCK_SIZE));
 
         dir_block_t db;
         memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
-        for (size_t i = 0; i < sizeof(db.entries); i++)
+        for (size_t j = 0; j < num_dir_ent; j++) // num_dir_ent
         {
-            if (strcmp(db.entries[i].name, name) == 0)
+            if (strcmp(db.entries[j].name, name) == 0)
             {
                 fsync(file_d);
-                return db.entries[i].inum;
+                return db.entries[j].inum;
             }
         }
     }
@@ -143,6 +140,7 @@ int Stat(int inum, s_msg_t server_msg, struct sockaddr_in addr)
     }
 
     // check that the inode actually exist looking at the bitmap
+    // use checkInodeAllocated()
 
     long inode_addr = (long)(fs_img + superblock->inode_region_addr + inum * UFS_BLOCK_SIZE);
     inode_t inode;
@@ -236,6 +234,8 @@ int Read(int inum, char *buffer, int offset, int nbytes)
     fsync(file_d);
     return 0;
 }
+
+
 int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr)
 {
     // if invalid pnum or invalid/too long of name
@@ -244,39 +244,109 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         return -1;
     }
 
-    // check that the pinode actually exist looking at the bitmap
-    long pinode_addr = (long)(fs_img + superblock->inode_region_addr + pinum * 4096);
-    inode_t pinode;
-    memcpy(&pinode, (void *)pinode_addr, sizeof(inode_t));
+    super_t s = *superblock;
+    // if pinum unallocated not gord
+    if(checkInodeAllocated(pinum) == 0){
+        return -1;
+    }
+    // if already created great success!
+    if(Lookup(pinum, name) != -1){
+        return 0;
+    }
 
-    // pinode has not been allocated DNE
-    if (pinode.size == 0)
-    {
-        // server_msg.returnCode = -1;
+    long address = (long)(fs_img + s.inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
+    inode_t pinode;
+    memcpy(&pinode, (void*)address, sizeof(inode_t));
+
+    unsigned int bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
+    memcpy(bits, fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
+    
+    int inode_num = -1;
+    // find first unallocated inode
+    for(int i = 0; i < s.num_inodes; i++){
+        if(get_bit((unsigned int *)bits, i) == 0){
+            inode_num = i;
+            break;
+        }
+    }
+
+    // unable to allocate a new inode number
+    if(inode_num == -1){
         return -1;
     }
 
+    // num of dir entries in the pinode
+    int num_dir_ent = (pinode.size) / sizeof(dir_ent_t);
+
+     // number of directory entries
+    int num_data_blocks = pinode.size / UFS_BLOCK_SIZE;
+
+    for (int j = 0; j < num_data_blocks; j++){
+        if (pinode.direct[j] != -1){
+            long curr_data_region = (long)(fs_img + (pinode.direct[j] * UFS_BLOCK_SIZE));
+
+            dir_block_t db;
+            memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
+
+            for (int k = 0; k < num_dir_ent; k++){
+                if(db.entries[k].inum == -1){
+                    db.entries[k].inum = inode_num;
+                    strcpy(db.entries[k].name,name);
+
+                    // create new inode
+                    inode_t new_inode;
+                    new_inode.type = type;
+                    new_inode.size = 0;
+                    new_inode.direct[0] = -1;
+                    return 0;
+                }
+            }   
+        }
+    }
+
+    // if we get here, we need to allocate a new block
+    for (int l = 0; l < num_data_blocks; l++){
+        if (pinode.direct[l] == -1){
+            // allocate this block
+            unsigned int data_bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
+            memcpy(data_bits, fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
+            
+            int data_num = -1;
+
+            // find first unallocated data
+            for(int n = 0; n < s.num_data; n++){
+                if(get_bit((unsigned int *)data_bits, n) == 0){
+                    dir_ent_t new_dir_ent;
+                    new_dir_ent.inum = inode_num;
+                    strcpy(new_dir_ent.name, name);
+                    pinode.direct[l] = n;
+                    
+                    // create new inode
+                    inode_t new_inode;
+                    new_inode.type = type;
+                    new_inode.size = 0;
+                    new_inode.direct[0] = -1;
+
+                    return 0;
+                }
+            }
+        }
+    }
+
     fsync(file_d);
-    return 0;
+    return -1;
 }
+
 int Unlink(int pinum, char *name)
 {
     fsync(file_d);
     return 0;
 }
 
-
 int Shutdown(s_msg_t server_msg, struct sockaddr_in addr)
 {
-    // int rc = UDP_Close(file_d);
-    // if(rc < 0){
-    //     server_msg.returnCode = -1;
-    //     printf("return code: %d\n", server_msg.returnCode);
-    //     exit(-1);
-    // }
     server_msg.returnCode = 0;
     UDP_Write(sd, &addr, (void *)&server_msg, sizeof(server_msg));
-    printf("return code: %d\n", server_msg.returnCode);
     fsync(file_d);
     close(file_d);
     exit(0);
@@ -290,9 +360,6 @@ void intHandler(int dummy) {
 // server code
 int main(int argc, char *argv[])
 {
-    printf(
-        "Server has begun, esteemd Prasun!!!\n"
-    );
     signal(SIGINT, intHandler);
     assert(argc == 3);
     int port_num = atoi(argv[1]);
@@ -303,12 +370,7 @@ int main(int argc, char *argv[])
 
     if (sd <= 0)
     {
-        printf("Failed to bind UDP socket");
         return -1;
-    }
-    else
-    {
-        printf("Listening on port %d", port_num);
     }
     assert(sd > -1);
     struct stat file_info;
@@ -341,15 +403,11 @@ int main(int argc, char *argv[])
         // super_t s;
         printf("server:: waiting...\n");
         int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
-        printf("MESSAGE!!!!!!: %d\n", message.func);
 
         if (rc < 0)
         {
-            printf("MESSAGE!!!!!!: %d\n", message.func);
             return -1;
         }
-
-        printf("MESSAGE!!!!!!: %d\n", message.func);
         switch (message.func)
         {
         case INIT:

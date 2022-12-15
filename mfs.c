@@ -9,6 +9,29 @@ struct sockaddr_in server_addr;
 int fd;
 
 int MFS_Init(char *hostname, int port){
+    /*
+    struct sockaddr_in addrSnd, addrRcv;
+    int sd = UDP_Open(20000);
+    int rc = UDP_FillSockAddr(&addrSnd, "localhost", 10000);
+
+    msg_t message;
+    message.hostname = hostname;
+    message.port = port;
+
+    printf("client:: send message");
+    rc = UDP_Write(sd, &addrSnd, (char* )&message, 1000);
+    if (rc < 0) {
+        printf("client:: failed to send\n");
+        exit(1);
+    }
+
+    printf("client:: wait for reply...\n");
+    s_msg_t server_message;
+    rc = UDP_Read(sd, &addrRcv, (char* )&server_message, 1000);
+    printf("client:: got reply [size:%d contents:(%s)\n", server_message.returnCode, server_message.buffer);
+    return 0;
+    */
+
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
     if(rc != 0){
         printf("Failed to set up server address\n");

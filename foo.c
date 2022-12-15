@@ -1,3 +1,5 @@
+#include "libmfs.so"
+
 #include <stdio.h>
 #include "udp.h"
 #include "msg.h"
@@ -14,12 +16,6 @@ int main(int argc, char *argv[]) {
 
     MFS_Shutdown();
 }
-
 /*
-Make foo.c
-Include the shared libraries
-Replicate all the commands that the tester does
-For server.c
-Compile it with -g flag so u can use gdb
-Once you open gdb type tui enable
+gcc -g foo.c
 */

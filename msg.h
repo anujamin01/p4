@@ -1,3 +1,6 @@
+#ifndef MSG_H
+#define MSG_H
+
 #include "mfs.h"
 
 #define INIT (0)
@@ -22,6 +25,7 @@ typedef struct{
     int nbytes;
     int type;
 } msg_t;
+
 // move buffer outside and increase size then concatenate the struct msg_t to the buffer in the mfs write or whatever
 typedef struct{
     int inode;
@@ -31,3 +35,5 @@ typedef struct{
     int returnCode;
     MFS_Stat_t m;
 } s_msg_t;
+
+#endif // MSG_H

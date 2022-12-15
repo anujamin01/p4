@@ -1,5 +1,5 @@
 CC     := gcc
-CFLAGS := -Werror 
+CFLAGS := -Werror -g
 
 SRCS   := client.c \
 	server.c \

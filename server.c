@@ -49,13 +49,19 @@ void set_bit(unsigned int *bitmap, int position)
     bitmap[index] |= 0x1 << offset;
 }
 
+void clear_bit(unsigned int* bitmap, int position){
+    int index = position / 32;
+    int offset = 31 - (position % 32);
+    bitmap[index] &= 0x0 << offset;
+}
+
 /*
 If not allocated, return -1 else return 0
 */
 unsigned int checkInodeAllocated(int pinum)
 {
     unsigned int *bits = malloc(UFS_BLOCK_SIZE); // malloc bitmap :)
-    memcpy(bits, fs_img + superblock->inode_bitmap_addr, UFS_BLOCK_SIZE);
+    memcpy(bits, fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
 
     // if not allocated
     if (get_bit(bits, pinum) == 0)
@@ -67,16 +73,49 @@ unsigned int checkInodeAllocated(int pinum)
     return 1;
 }
 
-int Init(char *hostname, int port, struct sockaddr_in addr)
-{
-    // fill bitmaps
-    inode_bitmap i_bitmap;
-    //memcpy(&i_bitmap, (void *)superblock->inode_bitmap_addr, sizeof(inode_bitmap));
+unsigned int checkDataBitmapAllocated(int blockNumber){
+    unsigned int *bits = malloc(UFS_BLOCK_SIZE); 
+    memcpy(bits, fs_img + superblock->data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
 
-    data_bitmap d_bitmap;
-    //memcpy(&d_bitmap, (void *)superblock->data_bitmap_addr, sizeof(data_bitmap));
+    // if not allocated
+    if (get_bit(bits, blockNumber) == 0)
+    {
+        free(bits);
+        return 0;
+    }
+    free(bits);
+    return 1;
 
-    fsync(file_d);
+}
+
+int Init(char *hostname, int port, s_msg_t server_msg, struct sockaddr_in address){
+    /*
+    int sd = UDP_Open(10000);
+    assert(sd > -1);
+    while (1) {
+        struct sockaddr_in addr;
+        msg_t message;
+        printf("server:: waiting...\n");
+        int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
+        printf("server:: read message [size:%d contents:(%s)]\n", message.port, message.hostname);
+        if (rc > 0) 
+        {
+                s_msg_t server_message;
+                server_message.returnCode = 123;
+                server_message.buffer = "BUFFER";
+                sprintf(reply, "goodbye world");
+                rc = UDP_Write(sd, &addr, (char *)&server_message, BUFFER_SIZE);
+            printf("server:: reply\n");
+        } 
+    }
+    return 0; 
+    */
+
+    /*
+    printf("IN INIT");
+    UDP_Write(sd, &address, (char*)&server_msg, sizeof(server_msg));
+    */
+
     return 0;
 }
 
@@ -303,7 +342,7 @@ int Read(int inum, char *buffer, int offset, int nbytes)
 int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_in addr)
 {
     // if invalid pnum or invalid/too long of name
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > BUFFER_SIZE)
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
     {
         server_msg.returnCode = -1;
         return -1;
@@ -312,147 +351,98 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     super_t s = *superblock;
 
     // if pinum unallocated 
-    if(checkInodeAllocated(pinum) == 0){
-        server_msg.returnCode = -1;
-        return -1;
-    }
-
     // if already created great success!
     if(LookupHelper(pinum, name) != -1){
         server_msg.returnCode = 0;
         return 0;
     }
+    inode_t *inodeTable = (inode_t*)(fs_img + s.inode_region_addr * UFS_BLOCK_SIZE);
+    unsigned int * inodeBitmap = (unsigned int*)(fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE);
 
-    // get address of start of pinum
-    long address = (long)(fs_img + s.inode_region_addr * UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
-    inode_t pinode;
-    memcpy(&pinode, (void*)address, sizeof(inode_t));
+    if(inodeTable[pinum].type == 1){ //Parent inode is a file 
+        return -1;
+    }
 
-    // get inode bitmap
-    unsigned int bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
-    memcpy(bits, fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
-    
-    int inode_num = -1;
+    // look for spot to put new inode
+    int newInode = -1;
     for(int i = 0; i < s.num_inodes; i++){
-        if(get_bit((unsigned int *)bits, i) == 0){
-            inode_num = i;
-            set_bit((unsigned int*) bits, inode_num);
+        int rel = checkInodeAllocated(newInode);
+        if(rel  == 0){ // found an unallocated inode
+            newInode = rel;
             break;
         }
     }
 
     // unable to allocate a new inode number
-    if(inode_num == -1){
+    if(newInode == -1){
         server_msg.returnCode = -1;
         return -1;
     }
 
-    //Write out the set inode bitmap to disk
-    pwrite(file_d, &bits, UFS_BLOCK_SIZE, UFS_BLOCK_SIZE * s.inode_bitmap_addr);
+    set_bit((unsigned int*) inodeBitmap, newInode); //mark bit as allocated
 
-    // STARTING NEW ONE...
-    int spaceFound = 0;
-    dir_block_t *dir_entries;
-    int alreadyExists = 0;
-
-    // Writing to parent inode's directory entries, if space already exists
-    for (int j = 0; j < 30; j++)
-    {
-        if (pinode.direct[j] != -1)
-        {
-            long curr_data_region = (long)(fs_img + (pinode.direct[j] * UFS_BLOCK_SIZE));
-
-            dir_entries = (dir_block_t *) (fs_img + (pinode.direct[j] * 4096));
-
-            for (int k = 0; k < 128; k++)
-            {
-                if(dir_entries->entries[k].inum != -1){
-                    if(strcmp(dir_entries->entries->name, name) == 0)
-                    {
-                        server_msg.returnCode = 0;
-                        alreadyExists = 1;
-                        return 0;
+    if(type == 1){ //the new inode is a file 
+        inodeTable[newInode].size = 0;
+        inodeTable[newInode].type = 1;
+        for(int i = 0; i < DIRECT_PTRS; i++){
+            inodeTable[newInode].direct[i] = -1;
+        } 
+        //update parent inode's directory entries
+        //pretty sure you dont have to handle the case where a directory block is full.
+        int entryFound = 0;
+        for(int i = 0; i < DIRECT_PTRS; i++){
+            if(inodeTable[pinum].direct[i] != -1){
+                dir_block_t * parentEntries = (dir_block_t*) fs_img + UFS_BLOCK_SIZE * s.data_region_addr + i * UFS_BLOCK_SIZE;
+                for(int j = 0; j < UFS_BLOCK_SIZE / sizeof(MFS_DirEnt_t); j++){
+                    if(parentEntries->entries[j].inum == -1){
+                        parentEntries->entries[j].inum = newInode;
+                        memcpy(&parentEntries->entries[j].name, name, 28);
+                        entryFound = 1;
+                        break;
                     }
                 }
-                else
-                {
-                    dir_entries->entries[k].inum = inode_num;
-                    strcpy(dir_entries->entries[k].name,name);
-                    spaceFound = 1;
-                    break;
-                }
-            }   
+            }
+            if(entryFound == 0) break;
         }
     }
-
-    // create inode and fill with relevant info
-    inode_t new_inode_t;
-    new_inode_t.type = type;
-
+    else{ //the new inode is a directory
+        inodeTable[newInode].size = 2 * sizeof(dir_ent_t);
+        inodeTable[newInode].type = 0;
+        // find unallocated datablock via bitmap 
+        int n = -1;
      // get data bitmap
-    unsigned int data_bits[UFS_BLOCK_SIZE / sizeof(unsigned int)];
-    memcpy(data_bits, fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
-    /*
-    First I loop through and check if there are any datablocks that are not -1 (meaning they are allocated)
-
-    */
-
-   // why do we have first loop;
-    for (int l = 0; l < 30; l++){ // DIRECT_PTRS probably 30
-        if (pinode.direct[l] == -1){
-            int data_num = -1;
-            
-            int n = 0;
-            // find first unallocated data
-            for(n = 0; n < s.num_data; n++)
-            {
-                if(get_bit((unsigned int *)data_bits, n) == 0){//!Allocated
-                    // I think this sets the bit in data bitmap to 1
-                    set_bit((unsigned int*)(fs_img + s.data_bitmap_addr*4096), n);
-                    break;
-                }
+        long bitmapAddr = (long)(fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE);
+        // find first unallocated block and mark it to be unallocated
+        for(n= 0; n < s.num_data; n++){
+            if(get_bit((unsigned int*)bitmapAddr, n) == 0){ 
+                set_bit((unsigned int*)(fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE), n);
+                break;
             }
         }
-    }
+        if (n == -1){
+            server_msg.returnCode = -1;
+            return -1;
+        }
 
-    inode_t* newInode = fs_img + inode_num * UFS_BLOCK_SIZE + s.inode_region_addr * UFS_BLOCK_SIZE;
-    newInode->type = type;
-    dir_block_t *new_dir_entries;
-    if(type == MFS_DIRECTORY)
-    {
-        newInode->size = 2*sizeof(dir_ent_t);
+        //pointer to the newly allocated data block
+        dir_block_t *dir = (dir_block_t*) fs_img + s.data_region_addr * UFS_BLOCK_SIZE + n * UFS_BLOCK_SIZE;
+
+        // set name and inode numbers 
+        dir->entries[0].inum = newInode;
+        strcpy(dir->entries[0].name, ".");
+        dir->entries[1].inum = pinum;
+        strcpy(dir->entries[1].name, "..");
+        //dir[0].entries->inum = newInode;
+        //dir[1].entries->inum = pinum;
+        inodeTable[newInode].direct[0] = n;
+
+        for(int i = 2; i < UFS_BLOCK_SIZE / 32; i++){
+            dir->entries[i].inum = -1;
+        }
         
-        // TODO: fix this
-        //Find unallocated datablock via bitmap
-        //set a bit in the bitmap
-        //need to find a data block
-        int n = 0;
-        for(n = 0; n < s.num_data; n++){
-            if(get_bit((unsigned int *)data_bits, n) == 0)
-            { //!Allocated
-                // I think this sets the bit in data bitmap to 1
-                set_bit((unsigned int*)(fs_img + s.data_bitmap_addr*4096), n);
-            }
+        for(int i = 1; i < DIRECT_PTRS; i++){
+            inodeTable[newInode].direct[i] = -1;
         }
-
-        new_dir_entries = (dir_block_t*)(fs_img + (s.data_region_addr*4096) + (n * UFS_BLOCK_SIZE));
-
-        new_dir_entries->entries[0].inum = inode_num;
-        strcpy(new_dir_entries->entries[0].name, ".");
-
-        new_dir_entries->entries[1].inum = pinum;
-        strcpy(new_dir_entries->entries[1].name, "..");
-
-        for (int i = 2; i < 128; i++)
-	    new_dir_entries->entries[i].inum = -1;
-    }
-    else
-    {
-        newInode->size = 0;
-
-        // ??
-        for (int i = 0; i < 128; i++)
-	    new_dir_entries->entries[i].inum = -1;
     }
 
     msync(fs_img, fs_img_size, MS_SYNC);
@@ -474,8 +464,6 @@ int Unlink(int pinum, char *name)
     if (pinum < 0 || pinum > superblock->num_inodes || name == NULL || strlen(name) > 28){
         return -1;
     }
-
-
 
     fsync(file_d);
     return 0;
@@ -503,7 +491,6 @@ int main(int argc, char *argv[])
     int port_num = atoi(argv[1]);
     const char *img_path = argv[2];
 
-    //port_num = 11011;
     sd = UDP_Open(port_num);
 
     if (sd <= 0)
@@ -528,22 +515,13 @@ int main(int argc, char *argv[])
 
     unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
 
-    //inodes = fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE;
-    /*
-    printf("Max inum number is: %i\n", max_inodes); 
-    printf("Number of inode blocks %i\n", superblock->inode_region_len);
-    printf("Number of data blocks: %i\n", superblock->data_region_len);
-    printf("Waiting for client messages\n");
-    */
-
     while (1)
     {
         struct sockaddr_in addr;
         msg_t message;
         s_msg_t server_message;
-        // super_t s;
         printf("server:: waiting...\n");
-        int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
+        int rc = UDP_Read(sd, &addr, (char *)&message, 1000);
 
         if (rc < 0)
         {
@@ -552,7 +530,7 @@ int main(int argc, char *argv[])
         switch (message.func)
         {
         case INIT:
-            //Init(message.hostname, message.port, addr);
+            //Init(message.hostname, message.port, server_message, addr);
             break;
         case LOOKUP:
             Lookup(message.pinum, message.name, server_message, addr);
@@ -580,10 +558,8 @@ int main(int argc, char *argv[])
         printf("server:: read message");
         if (rc > 0)
         {
-            char reply[BUFFER_SIZE];
-            sprintf(reply, "goodbye world");
-            rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
-            printf("server:: reply\n");
+            //s_msg_t server_message;
+            rc = UDP_Write(sd, &addr, (char*)&server_message, sizeof(s_msg_t));
         }
     }
     return 0;

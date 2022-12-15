@@ -360,6 +360,7 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     unsigned int * inodeBitmap = (unsigned int*)(fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE);
 
     if(inodeTable[pinum].type == 1){ //Parent inode is a file 
+        server_msg.returnCode = -1;
         return -1;
     }
 
@@ -382,8 +383,13 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
     set_bit((unsigned int*) inodeBitmap, newInode); //mark bit as allocated
 
     if(type == 1){ //the new inode is a file 
-        inodeTable[newInode].size = 0;
-        inodeTable[newInode].type = 1;
+        // create a new inode and memcpy
+        inode_t inde;
+        inde.size = 0;
+        inde.type = 1;
+        memcpy(&inodeTable[newInode], (void *)&inde, sizeof(inode_t));
+        //inodeTable[newInode].size = 0;
+        //inodeTable[newInode].type = 1;
         for(int i = 0; i < DIRECT_PTRS; i++){
             inodeTable[newInode].direct[i] = -1;
         } 

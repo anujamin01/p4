@@ -1,0 +1,12 @@
+/*
+1. Pull inode bitmap
+2. Find first available spot in inode table by iterating through bitmap
+3. Mark that bit as a 1, indicating we are now putting an inode in that spot
+4. Create an inode struct, fill it with relevant info
+5. Pull datablock bitmap
+6. Find first available data block by iteration
+7. Mark that spot in the bitmap as being filled
+8. Put the address of that data block in your new inode's direct pointer list
+9. memcpy() (or something else idk) your inode into the inode table
+at the index you found in step 2
+*/

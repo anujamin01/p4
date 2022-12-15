@@ -28,8 +28,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7864
-/tmp/tmp1rnZ5v/p/server 7864 /home/anuj/CS537NEW/p4/test.img
+Starting server on port 6007
+/tmp/tmpiKa2dx/p/server 6007 /home/anuj/CS537NEW/p4/test.img
 server:: waiting...
 
 
@@ -50,14 +50,14 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9601
-/tmp/tmp1rnZ5v/p/server 9601 /home/anuj/CS537NEW/p4/test.img
-Failure: MFS_Lookup returned failure inum=0 name='\xc8O0\xe9'
+Starting server on port 7692
+/tmp/tmpiKa2dx/p/server 7692 /home/anuj/CS537NEW/p4/test.img
+Failure: MFS_Lookup returned failure inum=0 name='p\x81\x88\xef'
 
 
 test creat FAILED
  (creat a file and check with lookup)
- MFS_Lookup returned failure inum=0 name='\xc8O0\xe9'
+ MFS_Lookup returned failure inum=0 name='p\x81\x88\xef'
 
 Skipped 16 tests.
 To keep testing after failing a test, use flag '-c' or '--continue'

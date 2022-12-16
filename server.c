@@ -20,7 +20,7 @@ int fs_img_size;
 inode_t *inodeTable;
 unsigned int *inodeBitmap;
 unsigned int *dataBitmap;
-
+void * dataRegion;
 // TODO: use fsync() in some functions
 // TODO: fill these up in INIT
 typedef struct
@@ -47,7 +47,8 @@ unsigned int get_bit(unsigned int * bitmap, int position)
 
 void set_bit(unsigned int *bitmap, int position)
 {
-    printf("seggs%p\n", inodeBitmap);
+    printf("segfault %p\n", inodeBitmap);
+    printf("segfault %p\n", bitmap);
     int index = position / 32;
     int offset = 31 - (position % 32);
     bitmap[index] |= 0x1 << offset;
@@ -60,6 +61,23 @@ void clear_bit(unsigned int* bitmap, int position){
     bitmap[index] &= 0x0 << offset;
 }
 
+/*
+If not allocated, return -1 else return 0
+*/
+unsigned int checkInodeAllocated(int pinum)
+{
+    unsigned int *bits = malloc(UFS_BLOCK_SIZE); // malloc bitmap :)
+    memcpy(bits, fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
+
+    // if not allocated
+    if (get_bit(bits, pinum) == 0)
+    {
+        free(bits);
+        return 0;
+    }
+    free(bits);
+    return 1;
+}
 
 int Init(char *hostname, int port, s_msg_t server_msg, struct sockaddr_in address){
     /*
@@ -360,11 +378,11 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
     }
 
     // look for spot to put new inode
-    int newInode = -1;
+    int newInode = 0;
     for(int i = 0; i < s.num_inodes; i++){
-        int rel = get_bit(inodeBitmap, newInode);
+        int rel = get_bit(inodeBitmap, i);
         if(rel  == 0){ // found an unallocated inode
-            newInode = rel;
+            newInode = i;
             break;
         }
     }
@@ -376,6 +394,7 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
         return -1;
     }
 
+    get_bit(inodeBitmap, newInode); //mark bit as allocated
     set_bit(inodeBitmap, newInode); //mark bit as allocated
     
 
@@ -560,17 +579,15 @@ int main(int argc, char *argv[])
     {
         perror("Fstat failed");
     }
-
     // TODO: fix parameters
-    struct stat st;
     fs_img = mmap(NULL, file_info.st_size,  MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
-    //fs_img_size = stat(fs_img,&st);
+
     superblock = (super_t *)fs_img;
     //int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
     inodeTable = (inode_t*)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
     inodeBitmap = (unsigned int *)(fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE);
     dataBitmap = (unsigned int *)(fs_img  + superblock->data_bitmap_addr * UFS_BLOCK_SIZE);
-
+    dataRegion = (fs_img + superblock->data_region_addr * UFS_BLOCK_SIZE);
     while (1)
     {
         struct sockaddr_in addr;

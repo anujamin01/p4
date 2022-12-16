@@ -11,7 +11,7 @@ PROGS  := ${SRCS:.c=}
 all: ${PROGS}
 
 ${PROGS} : % : %.o Makefile
-	${CC} $< -o $@ udp.c mfs.c
+	${CC} $< -o $@ udp.c mfs.c  -g
 
 
 lib:

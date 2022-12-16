@@ -95,8 +95,11 @@ int Init(char *hostname, int port, s_msg_t server_msg, struct sockaddr_in addres
     long inodeTableAddr = (long)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
     //memcpy(inodeTable, inodeTableAddr, );
     
-    void *inodeBitmap;
-    void *dataBitmap;
+    long inodeBitmapAddr = (long)(fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE);
+    //memcpy(inodeBitmap, inodeBitmapAddr, );
+    
+    long dataBitmapAddr = (long)(fs_img + superblock->data_bitmap_addr * UFS_BLOCK_SIZE);
+    //memcpy(dataBitmap, dataBitmapAddr, );
     return 0;
 }
 
@@ -205,6 +208,7 @@ int LookupHelper(int pinum, char *name)
         long curr_data_region = (long)(fs_img + (inode.direct[i] * UFS_BLOCK_SIZE));
 
         dir_block_t db;
+        
         memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
         for (size_t j = 0; j < num_dir_ent; j++) // num_dir_ent
         {
@@ -518,12 +522,13 @@ int main(int argc, char *argv[])
 
     // TODO: fix parameters
     struct stat st;
-    fs_img = mmap(NULL, (int)st.st_size,  MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
+    fs_img = mmap(NULL, file_info.st_size,  MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
     //fs_img_size = stat(fs_img,&st);
     superblock = (super_t *)fs_img;
     //int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
 
-    //unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
+
+
     while (1)
     {
         struct sockaddr_in addr;

@@ -7,10 +7,16 @@
 
 // client code
 int main(int argc, char *argv[]) {
-    MFS_Init("HOSTNAME", 10000);
+    MFS_Init("localhost", 10008);
 
-    printf("Creating blank dir: %d\n",MFS_Creat(1,0,'dir1'));
-    printf("Looking up blank dir: %d\n",MFS_Lookup(0,'dir1'));
+    printf("BEFORE CREAT\n");
+    printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
+    printf("AFTER CREAT\n");
+    // printf("Lookup returned: %d\n", MFS_Lookup(0, "."));
+    // printf("got past init\n");
+    // printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
+    // printf("got past creat\n");
+    // printf("Looking up blank dir: %d\n",MFS_Lookup(0,"dir1"));
 
     MFS_Shutdown();
 }

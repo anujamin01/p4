@@ -17,7 +17,7 @@ typedef struct{
     char *hostname;
     int port;
     int pinum;
-    char name[4096];
+    char name[28];
     int inum;
     // MFS_Stat_t *m; potentially remove
     char buffer[4096];

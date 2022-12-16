@@ -49,14 +49,18 @@ int UDP_FillSockAddr(struct sockaddr_in *addr, char *hostname, int port) {
 }
 
 int UDP_Write(int fd, struct sockaddr_in *addr, char *buffer, int n) {
+    //printf("IN WRITE\n");
     int addr_len = sizeof(struct sockaddr_in);
     int rc = sendto(fd, buffer, n, 0, (struct sockaddr *) addr, addr_len);
+    //printf("IN WRITE2\n");
     return rc;
 }
 
 int UDP_Read(int fd, struct sockaddr_in *addr, char *buffer, int n) {
     int len = sizeof(struct sockaddr_in); 
     int rc = recvfrom(fd, buffer, n, 0, (struct sockaddr *) addr, (socklen_t *) &len);
+    //msg_t *temp = (msg_t*) buffer;
+    //printf("Received: %d\n", temp->func);
     // assert(len == sizeof(struct sockaddr_in)); 
     return rc;
 }

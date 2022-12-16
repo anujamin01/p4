@@ -42,27 +42,33 @@ int MFS_Init(char *hostname, int port){
 }
 
 int MFS_Lookup(int pinum, char *name){
-    if(!on){
-        return -1;
-    }
+    //printf("mfs 54\n");
     if (pinum < 0){
+        //printf("in pinum if\n");
         return -1;
     }
     if(strlen(name) > 100 || name == NULL){
+        //printf("in strlen name check if\n");
         return -1;
     }
     
-    msg_t m;
-    s_msg_t s_m;
-    m.func = LOOKUP;
-    m.pinum = pinum;
-    memcpy(m.name, name, strlen(name));
+    //printf("mfs 54\n");
+    msg_t *m;
+    s_msg_t *s_m;
+    m->func = LOOKUP;
+    m->pinum = pinum;
+    //printf("mfs 58\n");
+    memcpy(m->name, name, strlen(name));
+    //printf("mfs 60\n");
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+    //printf("BEFORE WRITE\n");
+    UDP_Write(fd, &server_addr, (char* )m, sizeof(m));
+    //printf("PASSED WRITE\n");
 
     struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m));
-    return s_m.inode;
+    UDP_Read(fd, &ret_addr, (char*)s_m, sizeof(s_m));
+    //printf("in return code: %d, %d\n", s_m->inode, s_m->returnCode);
+    return s_m->inode;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m){
@@ -120,21 +126,23 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
 }
 
 int MFS_Creat(int pinum, int type, char *name){
-    msg_t m;
-    s_msg_t s_m;
+    //printf("got to mfs_creat\n");
+    msg_t *m = malloc(sizeof(msg_t));
+    s_msg_t *s_m = malloc(sizeof(s_msg_t));
 
-    m.func = CREAT;
-    m.pinum = pinum;
-    m.type = type;
-    unsigned long name_size = sizeof(name);
-    memcpy(name, m.name, name_size);
+    m->func = CREAT;
+    m->pinum = pinum;
+    m->type = type;
+    //unsigned long name_size = sizeof(name);
+    strncpy(m->name, name, 28);
+    //memcpy(m.name, m.name, name_size);
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+    UDP_Write(fd, &server_addr, (char* )m, sizeof(m));
 
     struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+    UDP_Read(fd, &ret_addr, (char*)s_m, sizeof(s_m)); 
 
-    return s_m.returnCode;
+    return s_m->returnCode;
 }
 
 int MFS_Unlink(int pinum, char *name){

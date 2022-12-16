@@ -4,11 +4,6 @@ CFLAGS := -Werror -g
 SRCS   := client.c \
 	server.c \
 
-#\
-	mfs.c \
-	mkfs.c \
-	udp.c\
-
 OBJS   := ${SRCS:c=o}
 PROGS  := ${SRCS:.c=}
 

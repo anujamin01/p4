@@ -17,9 +17,9 @@ super_t *superblock;
 int sd;
 int fs_img_size;
 
-void *inodeTable;
-void *inodeBitmap;
-void *dataBitmap;
+inode_t *inodeTable;
+unsigned int *inodeBitmap;
+unsigned int *dataBitmap;
 
 // TODO: use fsync() in some functions
 // TODO: fill these up in INIT
@@ -38,7 +38,7 @@ typedef struct
     dir_ent_t entries[128];
 } dir_block_t;
 
-unsigned int get_bit(unsigned int *bitmap, int position)
+unsigned int get_bit(unsigned int * bitmap, int position)
 {
     int index = position / 32;
     int offset = 31 - (position % 32);
@@ -47,9 +47,11 @@ unsigned int get_bit(unsigned int *bitmap, int position)
 
 void set_bit(unsigned int *bitmap, int position)
 {
+    printf("seggs%p\n", inodeBitmap);
     int index = position / 32;
     int offset = 31 - (position % 32);
     bitmap[index] |= 0x1 << offset;
+    printf("hello, world!\n");
 }
 
 void clear_bit(unsigned int* bitmap, int position){
@@ -58,40 +60,9 @@ void clear_bit(unsigned int* bitmap, int position){
     bitmap[index] &= 0x0 << offset;
 }
 
-/*
-If not allocated, return -1 else return 0
-*/
-unsigned int checkInodeAllocated(int pinum)
-{
-    unsigned int *bits = malloc(UFS_BLOCK_SIZE); // malloc bitmap :)
-    memcpy(bits, fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
-
-    // if not allocated
-    if (get_bit(bits, pinum) == 0)
-    {
-        free(bits);
-        return 0;
-    }
-    free(bits);
-    return 1;
-}
-
-unsigned int checkDataBitmapAllocated(int blockNumber){
-    unsigned int *bits = malloc(UFS_BLOCK_SIZE); 
-    memcpy(bits, fs_img + superblock->data_bitmap_addr * UFS_BLOCK_SIZE, UFS_BLOCK_SIZE);
-
-    // if not allocated
-    if (get_bit(bits, blockNumber) == 0)
-    {
-        free(bits);
-        return 0;
-    }
-    free(bits);
-    return 1;
-
-}
 
 int Init(char *hostname, int port, s_msg_t server_msg, struct sockaddr_in address){
+    /*
     long inodeTableAddr = (long)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
     //memcpy(inodeTable, inodeTableAddr, );
     
@@ -100,6 +71,7 @@ int Init(char *hostname, int port, s_msg_t server_msg, struct sockaddr_in addres
     
     long dataBitmapAddr = (long)(fs_img + superblock->data_bitmap_addr * UFS_BLOCK_SIZE);
     //memcpy(dataBitmap, dataBitmapAddr, );
+    */
     return 0;
 }
 
@@ -113,15 +85,16 @@ int Lookup(int pinum, char *name, s_msg_t *server_msg, struct sockaddr_in addres
     }
     super_t *s = superblock;
     // check if inode allocated, TODO: ensure bitmap thingy works
-    if (checkInodeAllocated(pinum) == 0){
+    if (get_bit(inodeBitmap, pinum) == 0){
         server_msg->returnCode = -1;
         return -1;
     }
 
     // seek to inode
-    long addr = (long)(fs_img + s->inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
-    inode_t inode;
-    memcpy(&inode, (void *)addr, sizeof(inode_t));
+    inode_t inode = inodeTable[pinum];
+    //long addr = (long)(fs_img + s->inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
+    //inode_t inode;
+    //memcpy(&inode, (void *)addr, sizeof(inode_t));
 
     // read inode
     if (inode.type != MFS_DIRECTORY)
@@ -144,7 +117,7 @@ int Lookup(int pinum, char *name, s_msg_t *server_msg, struct sockaddr_in addres
 
     for (int i = 0; i <= num_data_blocks; i++)
     {
-        long curr_data_region = (long)(fs_img + (inode.direct[i] * UFS_BLOCK_SIZE));
+        void *curr_data_region = (void*)(fs_img + (inode.direct[i] * UFS_BLOCK_SIZE));
 
         dir_block_t db;
         memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
@@ -161,12 +134,14 @@ int Lookup(int pinum, char *name, s_msg_t *server_msg, struct sockaddr_in addres
             }
         }
     }
+    // couldn't find inode
     msync(fs_img, fs_img_size, MS_SYNC);
     server_msg->inode = -1;
     server_msg->returnCode = -1;
     UDP_Write(sd, &address, (char*)&server_msg, sizeof(server_msg));
     return -1;
 }
+
 
 int LookupHelper(int pinum, char *name)
 {   
@@ -206,7 +181,7 @@ int LookupHelper(int pinum, char *name)
 
     // seek to inode
     //long addr = (long)(fs_img + s->inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
-    inode_t * inodeTable = (fs_img + s->inode_region_addr * UFS_BLOCK_SIZE);
+    //inode_t * inodeTable = (fs_img + s->inode_region_addr * UFS_BLOCK_SIZE);
     inode_t inode = inodeTable[pinum];
     printf("type: %d\n",inode.type);
     //memcpy(&inode, (void *)addr, sizeof(inode_t));
@@ -379,11 +354,6 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
         server_msg->returnCode = 0;
         return 0;
     }
-    char* iBitmap = fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE;
-
-    inode_t * inodeTable = (fs_img + s.inode_region_addr * UFS_BLOCK_SIZE);
-
-    unsigned int * inodeBitmap = (unsigned int*) iBitmap;
 
     if(inodeTable[pinum].type == 1){ //Parent inode is a file 
         return -1;
@@ -392,7 +362,7 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
     // look for spot to put new inode
     int newInode = -1;
     for(int i = 0; i < s.num_inodes; i++){
-        int rel = checkInodeAllocated(newInode);
+        int rel = get_bit(inodeBitmap, newInode);
         if(rel  == 0){ // found an unallocated inode
             newInode = rel;
             break;
@@ -406,8 +376,8 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
         return -1;
     }
 
-    printf("IN CREAT2: newInode: %d\n", newInode);
     set_bit(inodeBitmap, newInode); //mark bit as allocated
+    
 
     printf("IN CREAT3\n");
 
@@ -482,7 +452,6 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
             inodeTable[newInode].direct[i] = -1;
         }
     }
-    //printf("IN CREAT9\n");
 
     msync(fs_img, fs_img_size, MS_SYNC);
     server_msg->returnCode = 0;
@@ -490,7 +459,7 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
     return 0;
 }
 
-int Unlink(int pinum, char *name)
+int Unlink(int pinum, char *name, s_msg_t *server_msg)
 {
     /*
     TODO:
@@ -498,13 +467,58 @@ int Unlink(int pinum, char *name)
     Failure modes: pinum does not exist, directory is NOT empty. Note that the name not existing is NOT 
     a failure by our definition (think about why this might be).
     */
+    int childInum;
 
     // invalid name or inode
     if (pinum < 0 || pinum > superblock->num_inodes || name == NULL || strlen(name) > 28){
+        server_msg->returnCode = -1;
+        return -1;
+    }
+    if((childInum = LookupHelper(pinum, name)) == -1){ 
+        server_msg->returnCode = -1;
         return -1;
     }
 
-    fsync(file_d);
+    inode_t child = inodeTable[childInum];
+    
+    if(child.type == 1){ // child is a file
+        for(int i = 0; i < DIRECT_PTRS; i++){
+            if(child.direct[i] != -1){ //setting direct poitners to zero.
+                clear_bit(dataBitmap, child.direct[i]);
+            }
+        }
+    }
+    else{ //it is a directory
+        if(child.size > 2 * sizeof(MFS_DirEnt_t)){ //we have more directory entries than "." and ".."
+            return -1;
+        }
+        for(int i = 0; i < DIRECT_PTRS; i++){ //clear child datablocks
+            clear_bit(dataBitmap, child.direct[i]);
+        }
+    }
+    int found = -1;
+
+    //Remove child directory entry from parent 
+    for(int i = 0; i < DIRECT_PTRS; i++){
+        if(inodeTable[pinum].direct[i] != -1){
+            dir_block_t* parentDirEntries = (dir_block_t*)(fs_img + superblock->data_region_addr * UFS_BLOCK_SIZE + inodeTable[pinum].direct[i] * UFS_BLOCK_SIZE); 
+
+            for(int j = 0; j < 128; j++){
+                if(strcmp(parentDirEntries->entries[j].name, name) == 0){
+                    parentDirEntries->entries[j].inum = -1;
+                    found = 1;
+                    break;
+                }
+            }
+        }
+        if(found == 1){
+            inodeTable[pinum].size -= 32;
+            break;
+        }
+    }
+    clear_bit(inodeBitmap, childInum); 
+
+    msync(fs_img, fs_img_size, MS_SYNC); //sync memory mapped file back to disk.
     return 0;
 }
 
@@ -553,8 +567,9 @@ int main(int argc, char *argv[])
     //fs_img_size = stat(fs_img,&st);
     superblock = (super_t *)fs_img;
     //int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
-
-
+    inodeTable = (inode_t*)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
+    inodeBitmap = (unsigned int *)(fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE);
+    dataBitmap = (unsigned int *)(fs_img  + superblock->data_bitmap_addr * UFS_BLOCK_SIZE);
 
     while (1)
     {
@@ -591,7 +606,7 @@ int main(int argc, char *argv[])
             Creat(message->pinum, message->type, message->name, server_message, addr);
             break;
         case UNLINK:
-            Unlink(message->pinum, message->name);
+            Unlink(message->pinum, message->name, server_message);
             break;
         case SHUTDOWN:
             Shutdown(*server_message, addr);

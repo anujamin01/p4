@@ -28,8 +28,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5673
-/tmp/tmpkIR6HY/p/server 5673 /home/anuj/CS537NEW/p4/test.img
+Starting server on port 9699
+/tmp/tmp2k4o9w/p/server 9699 /home/anuj/CS537NEW/p4/test.img
 server:: waiting...
 
 
@@ -50,13 +50,440 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9552
-/tmp/tmpkIR6HY/p/server 9552 /home/anuj/CS537NEW/p4/test.img
+Starting server on port 8322
+/tmp/tmp2k4o9w/p/server 8322 /home/anuj/CS537NEW/p4/test.img
 
 
 test creat FAILED
  (creat a file and check with lookup)
  Timelimit (10.0s) exceeded
 
-Skipped 16 tests.
-To keep testing after failing a test, use flag '-c' or '--continue'
+('starting', 'write')
+
+**********************************************************************
+
+Test write
+write then read one block
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 8623
+/tmp/tmp2k4o9w/p/server 8623 /home/anuj/CS537NEW/p4/test.img
+
+
+test write FAILED
+ (write then read one block)
+ Timelimit (10.0s) exceeded
+
+('starting', 'stat')
+
+**********************************************************************
+
+Test stat
+stat a regular file
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 8281
+/tmp/tmp2k4o9w/p/server 8281 /home/anuj/CS537NEW/p4/test.img
+
+
+test stat FAILED
+ (stat a regular file)
+ Timelimit (10.0s) exceeded
+
+('starting', 'overwrite')
+
+**********************************************************************
+
+Test overwrite
+overwrite a block
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 9653
+/tmp/tmp2k4o9w/p/server 9653 /home/anuj/CS537NEW/p4/test.img
+
+
+test overwrite FAILED
+ (overwrite a block)
+ Timelimit (10.0s) exceeded
+
+('starting', 'maxfile')
+
+**********************************************************************
+
+Test maxfile
+write largest possible file
+
+**********************************************************************
+total blocks        39
+  inodes            128 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 9343
+/tmp/tmp2k4o9w/p/server 9343 /home/anuj/CS537NEW/p4/test.img
+
+
+test maxfile FAILED
+ (write largest possible file)
+ Timelimit (10.0s) exceeded
+
+('starting', 'maxfile2')
+
+**********************************************************************
+
+Test maxfile2
+write more blocks than possible
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 6903
+/tmp/tmp2k4o9w/p/server 6903 /home/anuj/CS537NEW/p4/test.img
+
+
+test maxfile2 FAILED
+ (write more blocks than possible)
+ Timelimit (10.0s) exceeded
+
+('starting', 'dir1')
+
+**********************************************************************
+
+Test dir1
+check root for dot entries
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 8075
+/tmp/tmp2k4o9w/p/server 8075 /home/anuj/CS537NEW/p4/test.img
+
+
+test dir1 FAILED
+ (check root for dot entries)
+ Timelimit (10.0s) exceeded
+
+('starting', 'dir2')
+
+**********************************************************************
+
+Test dir2
+create a new directory and check it
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 5290
+/tmp/tmp2k4o9w/p/server 5290 /home/anuj/CS537NEW/p4/test.img
+
+
+test dir2 FAILED
+ (create a new directory and check it)
+ Timelimit (10.0s) exceeded
+
+('starting', 'baddir')
+
+**********************************************************************
+
+Test baddir
+try to create a file with a file parent inode
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 8664
+/tmp/tmp2k4o9w/p/server 8664 /home/anuj/CS537NEW/p4/test.img
+
+
+test baddir FAILED
+ (try to create a file with a file parent inode)
+ Timelimit (15.0s) exceeded
+
+('starting', 'baddir2')
+
+**********************************************************************
+
+Test baddir2
+try to lookup a file with a file parent inode
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 9897
+/tmp/tmp2k4o9w/p/server 9897 /home/anuj/CS537NEW/p4/test.img
+
+
+test baddir2 FAILED
+ (try to lookup a file with a file parent inode)
+ Timelimit (15.0s) exceeded
+
+('starting', 'unlink')
+
+**********************************************************************
+
+Test unlink
+unlink a file
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 6121
+/tmp/tmp2k4o9w/p/server 6121 /home/anuj/CS537NEW/p4/test.img
+
+
+test unlink FAILED
+ (unlink a file)
+ Timelimit (10.0s) exceeded
+
+('starting', 'unlink2')
+
+**********************************************************************
+
+Test unlink2
+unlink a directory
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 7322
+/tmp/tmp2k4o9w/p/server 7322 /home/anuj/CS537NEW/p4/test.img
+
+
+test unlink2 FAILED
+ (unlink a directory)
+ Timelimit (10.0s) exceeded
+
+('starting', 'empty')
+
+**********************************************************************
+
+Test empty
+unlink a non-empty directory
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 8779
+/tmp/tmp2k4o9w/p/server 8779 /home/anuj/CS537NEW/p4/test.img
+
+
+test empty FAILED
+ (unlink a non-empty directory)
+ Timelimit (10.0s) exceeded
+
+('starting', 'name')
+
+**********************************************************************
+
+Test name
+name too long
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 7585
+/tmp/tmp2k4o9w/p/server 7585 /home/anuj/CS537NEW/p4/test.img
+server:: waiting...
+
+
+test name PASSED
+ (name too long)
+
+('starting', 'persist')
+
+**********************************************************************
+
+Test persist
+restart server after creating a file
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 6546
+/tmp/tmp2k4o9w/p/server 6546 /home/anuj/CS537NEW/p4/test.img
+
+
+test persist FAILED
+ (restart server after creating a file)
+ Timelimit (30.0s) exceeded
+
+('starting', 'bigdir')
+
+**********************************************************************
+
+Test bigdir
+create a directory with 126 files
+
+**********************************************************************
+total blocks        39
+  inodes            128 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 5179
+/tmp/tmp2k4o9w/p/server 5179 /home/anuj/CS537NEW/p4/test.img
+
+
+test bigdir FAILED
+ (create a directory with 126 files)
+ Timelimit (180.0s) exceeded
+
+('starting', 'deep')
+
+**********************************************************************
+
+Test deep
+create many deeply nested directories
+
+**********************************************************************
+total blocks        39
+  inodes            128 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 8869
+/tmp/tmp2k4o9w/p/server 8869 /home/anuj/CS537NEW/p4/test.img
+
+
+test deep FAILED
+ (create many deeply nested directories)
+ Timelimit (60.0s) exceeded
+
+**********************************************************************
+Summary:
+test build PASSED
+ (build project using make)
+
+test shutdown PASSED
+ (init server and client then call shutdown)
+
+test creat FAILED
+ (creat a file and check with lookup)
+ Timelimit (10.0s) exceeded
+
+test write FAILED
+ (write then read one block)
+ Timelimit (10.0s) exceeded
+
+test stat FAILED
+ (stat a regular file)
+ Timelimit (10.0s) exceeded
+
+test overwrite FAILED
+ (overwrite a block)
+ Timelimit (10.0s) exceeded
+
+test maxfile FAILED
+ (write largest possible file)
+ Timelimit (10.0s) exceeded
+
+test maxfile2 FAILED
+ (write more blocks than possible)
+ Timelimit (10.0s) exceeded
+
+test dir1 FAILED
+ (check root for dot entries)
+ Timelimit (10.0s) exceeded
+
+test dir2 FAILED
+ (create a new directory and check it)
+ Timelimit (10.0s) exceeded
+
+test baddir FAILED
+ (try to create a file with a file parent inode)
+ Timelimit (15.0s) exceeded
+
+test baddir2 FAILED
+ (try to lookup a file with a file parent inode)
+ Timelimit (15.0s) exceeded
+
+test unlink FAILED
+ (unlink a file)
+ Timelimit (10.0s) exceeded
+
+test unlink2 FAILED
+ (unlink a directory)
+ Timelimit (10.0s) exceeded
+
+test empty FAILED
+ (unlink a non-empty directory)
+ Timelimit (10.0s) exceeded
+
+test name PASSED
+ (name too long)
+
+test persist FAILED
+ (restart server after creating a file)
+ Timelimit (30.0s) exceeded
+
+test bigdir FAILED
+ (create a directory with 126 files)
+ Timelimit (180.0s) exceeded
+
+test deep FAILED
+ (create many deeply nested directories)
+ Timelimit (60.0s) exceeded
+
+Passed 3 of 19 tests.
+Overall 3 of 19

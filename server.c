@@ -16,7 +16,10 @@ void *fs_img;
 super_t *superblock;
 int sd;
 int fs_img_size;
-inode_t inodes;
+
+void *inodeTable;
+void *inodeBitmap;
+void *dataBitmap;
 
 // TODO: use fsync() in some functions
 // TODO: fill these up in INIT
@@ -89,33 +92,11 @@ unsigned int checkDataBitmapAllocated(int blockNumber){
 }
 
 int Init(char *hostname, int port, s_msg_t server_msg, struct sockaddr_in address){
-    /*
-    int sd = UDP_Open(10000);
-    assert(sd > -1);
-    while (1) {
-        struct sockaddr_in addr;
-        msg_t message;
-        printf("server:: waiting...\n");
-        int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
-        printf("server:: read message [size:%d contents:(%s)]\n", message.port, message.hostname);
-        if (rc > 0) 
-        {
-                s_msg_t server_message;
-                server_message.returnCode = 123;
-                server_message.buffer = "BUFFER";
-                sprintf(reply, "goodbye world");
-                rc = UDP_Write(sd, &addr, (char *)&server_message, BUFFER_SIZE);
-            printf("server:: reply\n");
-        } 
-    }
-    return 0; 
-    */
-
-    /*
-    printf("IN INIT");
-    UDP_Write(sd, &address, (char*)&server_msg, sizeof(server_msg));
-    */
-
+    long inodeTableAddr = (long)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
+    //memcpy(inodeTable, inodeTableAddr, );
+    
+    void *inodeBitmap;
+    void *dataBitmap;
     return 0;
 }
 
@@ -344,14 +325,19 @@ int Read(int inum, char *buffer, int offset, int nbytes)
 
 int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_in addr)
 {
-    printf("IN CREAT\n");
-    //printf("got to server creat\n");
-    // if invalid pnum or invalid/too long of name
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
-    {
+
+    if(superblock->num_inodes < pinum){
         server_msg->returnCode = -1;
         return -1;
     }
+    printf("BEFORE IF\n");
+    if (pinum < 0 || name == NULL || strlen(name) > 28)
+    {
+        server_msg->returnCode = -1;
+        printf("IN IF\n");
+        return -1;
+    }
+    printf("AFTER IF\n");
 
     super_t s = *superblock;
 
@@ -362,8 +348,11 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
         server_msg->returnCode = 0;
         return 0;
     }
-    inode_t *inodeTable = (inode_t*)(fs_img + s.inode_region_addr * UFS_BLOCK_SIZE);
-    unsigned int * inodeBitmap = (unsigned int*)(fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE);
+    char* iBitmap = fs_img + s.inode_bitmap_addr * UFS_BLOCK_SIZE;
+
+    inode_t * inodeTable = (fs_img + s.inode_region_addr * UFS_BLOCK_SIZE);
+
+    unsigned int * inodeBitmap = (unsigned int*) iBitmap;
 
     if(inodeTable[pinum].type == 1){ //Parent inode is a file 
         return -1;
@@ -387,7 +376,7 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
     }
 
     printf("IN CREAT2: newInode: %d\n", newInode);
-    set_bit((unsigned int*) inodeBitmap, newInode); //mark bit as allocated
+    set_bit(inodeBitmap, newInode); //mark bit as allocated
 
     printf("IN CREAT3\n");
 
@@ -417,11 +406,11 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
             }
             if(entryFound == 0) break;
         }
-        printf("IN CREAT5\n");
+        //printf("IN CREAT5\n");
     }
     else
     { //the new inode is a directory
-        printf("IN CREAT6\n");
+        //printf("IN CREAT6\n");
         inodeTable[newInode].size = 2 * sizeof(dir_ent_t);
         inodeTable[newInode].type = 0;
         // find unallocated datablock via bitmap 
@@ -435,13 +424,13 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
                 break;
             }
         }
-        printf("IN CREAT7\n");
+        //printf("IN CREAT7\n");
         if (n == -1){
             server_msg->returnCode = -1;
             return -1;
         }
 
-        printf("IN CREAT100\n");
+        //printf("IN CREAT100\n");
         //pointer to the newly allocated data block
         dir_block_t *dir = (dir_block_t*) fs_img + s.data_region_addr * UFS_BLOCK_SIZE + n * UFS_BLOCK_SIZE;
 
@@ -457,12 +446,12 @@ int Creat(int pinum, int type, char *name, s_msg_t *server_msg, struct sockaddr_
         for(int i = 2; i < UFS_BLOCK_SIZE / 32; i++){
             dir->entries[i].inum = -1;
         }
-        printf("IN CREAT8\n");
+        //printf("IN CREAT8\n");
         for(int i = 1; i < DIRECT_PTRS; i++){
             inodeTable[newInode].direct[i] = -1;
         }
     }
-    printf("IN CREAT9\n");
+    //printf("IN CREAT9\n");
 
     msync(fs_img, fs_img_size, MS_SYNC);
     server_msg->returnCode = 0;
@@ -494,6 +483,7 @@ int Shutdown(s_msg_t server_msg, struct sockaddr_in addr)
     UDP_Write(sd, &addr, (void *)&server_msg, sizeof(server_msg));
     fsync(file_d);
     close(file_d);
+    UDP_Close(sd);
     exit(0);
 }
 
@@ -528,19 +518,22 @@ int main(int argc, char *argv[])
 
     // TODO: fix parameters
     struct stat st;
-    fs_img = mmap(NULL, sizeof(NULL), MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
-    fs_img_size = stat(fs_img,&st);
+    fs_img = mmap(NULL, (int)st.st_size,  MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
+    //fs_img_size = stat(fs_img,&st);
     superblock = (super_t *)fs_img;
-    int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
+    //int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
 
-    unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
+    //unsigned int *inode_bitmap = fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE;
     while (1)
     {
         struct sockaddr_in addr;
-        msg_t *message = malloc(sizeof(msg_t));
+        //msg_t* message = malloc(sizeof(msg_t));
+        msg_t msg;
         s_msg_t *server_message = malloc(sizeof(s_msg_t));
         printf("server:: waiting...\n");
-        int rc = UDP_Read(sd, &addr, (char *)message, sizeof(msg_t));
+        int rc = UDP_Read(sd, &addr, (char *)&msg, sizeof(msg_t));
+        //printf("name in server: %s\n", msg.name);
+        msg_t * message = &msg;
         if (rc < 0)
         {
             return -1;
@@ -579,8 +572,35 @@ int main(int argc, char *argv[])
             //s_msg_t server_message;
             rc = UDP_Write(sd, &addr, (char*)server_message, sizeof(s_msg_t));
         }
-        free(message);
+        //free(message);
         free(server_message);
     }
     return 0;
 }
+
+ /*
+    int sd = UDP_Open(10000);
+    assert(sd > -1);
+    while (1) {
+        struct sockaddr_in addr;
+        msg_t message;
+        printf("server:: waiting...\n");
+        int rc = UDP_Read(sd, &addr, (char *)&message, BUFFER_SIZE);
+        printf("server:: read message [size:%d contents:(%s)]\n", message.port, message.hostname);
+        if (rc > 0) 
+        {
+                s_msg_t server_message;
+                server_message.returnCode = 123;
+                server_message.buffer = "BUFFER";
+                sprintf(reply, "goodbye world");
+                rc = UDP_Write(sd, &addr, (char *)&server_message, BUFFER_SIZE);
+            printf("server:: reply\n");
+        } 
+    }
+    return 0; 
+    */
+
+    /*
+    printf("IN INIT");
+    UDP_Write(sd, &address, (char*)&server_msg, sizeof(server_msg));
+    */

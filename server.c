@@ -169,7 +169,31 @@ int Lookup(int pinum, char *name, s_msg_t *server_msg, struct sockaddr_in addres
 }
 
 int LookupHelper(int pinum, char *name)
-{
+{   
+    /*
+    // pinum unallocated
+    if (checkInodeAllocated(pinum) == 0){
+        return -1;
+    }
+    super_t s = *superblock;
+    inode_t * inodeTable = (fs_img + s.inode_region_addr * UFS_BLOCK_SIZE);
+
+    // pinum is a file not a folder
+    if (inodeTable[pinum].type == 1){
+        return -1;
+    }
+
+    // grab the parent inode
+    inode_t pinode = inodeTable[pinum];
+    int found = 0;
+    for (int i = 0; i < DIRECT_PTRS; i++){
+        if (pinode.direct[i] != -1){
+            int currPos = pinode.direct[i] - (long)(fs_img + s.data_region_addr * UFS_BLOCK_SIZE);
+            
+        }
+    }
+    */
+
     if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
     {
         return -1;
@@ -181,10 +205,11 @@ int LookupHelper(int pinum, char *name)
     }
 
     // seek to inode
-    long addr = (long)(fs_img + s->inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
-    inode_t inode;
-    memcpy(&inode, (void *)addr, sizeof(inode_t));
-
+    //long addr = (long)(fs_img + s->inode_region_addr*UFS_BLOCK_SIZE + (pinum * sizeof(inode_t)));
+    inode_t * inodeTable = (fs_img + s->inode_region_addr * UFS_BLOCK_SIZE);
+    inode_t inode = inodeTable[pinum];
+    printf("type: %d\n",inode.type);
+    //memcpy(&inode, (void *)addr, sizeof(inode_t));
     // read inode
     if (inode.type != MFS_DIRECTORY)
     {
@@ -193,23 +218,25 @@ int LookupHelper(int pinum, char *name)
 
     // number of directory entries? Might have to change
     int num_dir_ent = (inode.size) / sizeof(dir_ent_t);
-
+    printf("direntsize %ld\n", sizeof(dir_ent_t));
+    printf("numdirent %d\n", num_dir_ent);
     // number of used data blocks
     int num_data_blocks = inode.size / UFS_BLOCK_SIZE; // TODO: Fix 500 / 4096 = 0
-    if (inode.size % UFS_BLOCK_SIZE != 0) // fixed here
+    if (inode.size % UFS_BLOCK_SIZE !=0) {
         num_data_blocks++;
+    }
 
     int x = inode.size; // AMOUNT of BYTES in the file. 4100 bytes = 2 data blocks
 
     dir_ent_t arr[num_dir_ent];
 
-    for (int i = 0; i <= num_data_blocks; i++)
+    for (int i = 0; i < num_data_blocks; i++)
     {
-        long curr_data_region = (long)(fs_img + (inode.direct[i] * UFS_BLOCK_SIZE));
+        void *curr_data_region = (void*)(fs_img + (inode.direct[i] * UFS_BLOCK_SIZE));
+        printf("printing long %p\n", curr_data_region);
 
         dir_block_t db;
-        
-        memcpy(&db, (void *)curr_data_region, UFS_BLOCK_SIZE);
+        memcpy(&db, curr_data_region, UFS_BLOCK_SIZE);
         for (size_t j = 0; j < num_dir_ent; j++) // num_dir_ent
         {
             if (strcmp(db.entries[j].name, name) == 0)

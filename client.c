@@ -7,7 +7,7 @@
 
 // client code
 int main(int argc, char *argv[]) {
-    MFS_Init("localhost", 10008);
+    MFS_Init("localhost", 10020);
 
     printf("BEFORE CREAT\n");
     printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));

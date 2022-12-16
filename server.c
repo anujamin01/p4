@@ -580,12 +580,17 @@ int main(int argc, char *argv[])
         perror("Fstat failed");
     }
     // TODO: fix parameters
-    fs_img = mmap(NULL, file_info.st_size,  MAP_SHARED, PROT_READ | PROT_WRITE, file_d, 0); // was another_file_fd;
-
+    fs_img = mmap(NULL, file_info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_d, 0); // was another_file_fd;
+    if (fs_img == MAP_FAILED)
+    {
+        perror("mmap failed");
+        exit(1);
+    }
     superblock = (super_t *)fs_img;
     //int max_inodes = superblock->inode_bitmap_len * sizeof(unsigned int) * 8;
     inodeTable = (inode_t*)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
     inodeBitmap = (unsigned int *)(fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE);
+    printf("fsimg: %p inodeBitmap: %p\n", fs_img, inodeBitmap);
     dataBitmap = (unsigned int *)(fs_img  + superblock->data_bitmap_addr * UFS_BLOCK_SIZE);
     dataRegion = (fs_img + superblock->data_region_addr * UFS_BLOCK_SIZE);
     while (1)

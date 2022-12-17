@@ -89,6 +89,7 @@ int LookupHelper(int pinum, char *name)
         return -1;
     }
     super_t *s = superblock;
+
     // check if inode allocated, TODO: ensure bitmap thingy works
     if (checkInodeAllocated(pinum) == 0){
         return -1;
@@ -191,6 +192,7 @@ int Lookup(int pinum, char *name, msg_t *server_msg)
             }
         }
     }
+
     // couldn't find inode
     msync(fs_img, fs_img_size, MS_SYNC);
     server_msg->returnCode = -1;
@@ -237,7 +239,7 @@ int Write(int inum, char *buffer, int offset, int nbytes, msg_t *server_msg)
         set_bit(dataBitmap, unallocBit);
         curr_inode->direct[0] = superblock->data_region_addr + unallocBit;
         nextBlock = curr_inode->direct[0]*UFS_BLOCK_SIZE;
-        write_rc = pwrite(file_d, server_msg->buffer, nbytes, nextBlock);
+        write_rc = pwrite(file_d, buffer, nbytes, nextBlock);
     }
     else{ // at least one block
         int dir_index = offset/UFS_BLOCK_SIZE;
@@ -259,13 +261,13 @@ int Write(int inum, char *buffer, int offset, int nbytes, msg_t *server_msg)
                 server_msg->returnCode = -1;
                 return -1;
             }
-            set_bit(dataBitmap, curr_inode->direct[dir_index]);
+            set_bit(dataBitmap, unallocBit); //curr_inode->direct[dir_index]);
             curr_inode->direct[dir_index] = superblock->data_region_addr + unallocBit;
         }
 
         nextBlock = curr_inode->direct[dir_index] * UFS_BLOCK_SIZE + (offset%UFS_BLOCK_SIZE);
 
-        write_rc = pwrite(file_d, server_msg ->buffer, nbytes, nextBlock);
+        write_rc = pwrite(file_d, buffer, nbytes, nextBlock);
     }
     if(write_rc == -1 || write_rc != nbytes){
         server_msg->returnCode = -1;
@@ -281,22 +283,28 @@ int Write(int inum, char *buffer, int offset, int nbytes, msg_t *server_msg)
     return 0;
 }
 
-int Read(int inum, char *buffer, int offset, int nbytes)
+int Read(int inum, char *buffer, int offset, int nbytes, msg_t *server_message)
 {
-    long addr = (long)(fs_img + superblock->inode_region_addr + (inum * UFS_BLOCK_SIZE));
-    inode_t inode;
-    memcpy(&inode, (void *)addr, sizeof(inode_t));
-    if (inode.type == MFS_DIRECTORY)
-    {
-        return -1;
+    server_message->returnCode = 0;
+    if (inum >= 0){
+        if(get_bit(inodeBitmap, inum) == 1){
+            inode_t *curr_inode = inodeTable + inum;
+            if(offset+nbytes <= curr_inode->size){
+                if((offset/UFS_BLOCK_SIZE) < DIRECT_PTRS){
+                    if((curr_inode->direct[offset/UFS_BLOCK_SIZE]) != -1){
+                        server_message->type = curr_inode->type;
+                    }
+                    int nextBlock = (curr_inode->direct[offset/UFS_BLOCK_SIZE]) * UFS_BLOCK_SIZE + (offset % UFS_BLOCK_SIZE);
+                    int rc = pread(file_d, buffer, nbytes, nextBlock);
+                    if(rc<0){
+                        server_message->returnCode = -1;
+                    }
+                }
+            }
+        }
     }
-    long curr_data_region = (inode.direct[0] * UFS_BLOCK_SIZE) + offset;
-    read(curr_data_region, buffer, nbytes);
-
-    fsync(file_d);
     return 0;
 }
-
 
 int Creat(int pinum, int type, char *name, msg_t *server_msg)
 {
@@ -579,7 +587,7 @@ int main(int argc, char *argv[])
             UDP_Write(sd, &addr, (char *) &message, sizeof(msg_t));
             break;
         case READ:
-            Read(message.inum, message.buffer, message.offset, message.nbytes);
+            Read(message.inum, message.buffer, message.offset, message.nbytes, &message);
             UDP_Write(sd, &addr, (char *) &message, sizeof(msg_t));
             break;
         case CREAT:

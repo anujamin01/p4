@@ -84,6 +84,11 @@ unsigned int checkInodeAllocated(int pinum)
 
 int LookupHelper(int pinum, char *name)
 {   
+
+
+
+
+    ////////// OURS///////////
     if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
     {
         return -1;
@@ -140,11 +145,66 @@ int Init(char *hostname, int port, msg_t *server_msg){
 
 int Lookup(int pinum, char *name, msg_t *server_msg)
 {
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28)
+
+    // invalid name or invalid pinum
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28 || get_bit(inodeBitmap, pinum) == 0)
     {
         server_msg->returnCode = -1;
         return -1;
     }
+ 
+     //get inode of parent   
+    inode_t *pinode = inodeTable + pinum; 
+    // cannot lookup inside file
+    if (pinode->type == 1) {
+        server_msg->returnCode = 1;
+        return -1; 
+    }  
+
+    // iterate through direct block
+    dir_ent_t *currBlock = malloc(UFS_BLOCK_SIZE);
+    int i = 0;
+
+    while(i < 30){
+        // examine allocated region
+        if(pinode->direct[i] != -1){
+            long addr = pinode->direct[i] * UFS_BLOCK_SIZE;
+
+            if(addr > 0){
+                // address a datablock
+                int testSeek = lseek(file_d, addr, SEEK_SET);
+                if(testSeek < 0){
+                    server_msg->returnCode = -1;
+                    return -1;
+                }
+
+                // read the datablock
+                int testRead = read(file_d, currBlock, UFS_BLOCK_SIZE);
+                if (testRead < 0){
+                    server_msg->returnCode = -1;
+                    return -1;
+                }
+                // for every directory in datablock
+                for (int j = 0; j < 128; j++){
+                    dir_ent_t currEntry = currBlock[j];
+
+                    // check allocated inum
+                    if (currEntry.inum != -1){
+                        if (currEntry.inum != -1 && strcmp(currEntry.name,name) == 0){
+                            server_msg->returnCode = currEntry.inum;
+                            return currEntry.inum;
+                        }
+                    }
+                }
+            }
+        }
+        i++;
+    }
+    free(parentDir);
+    server_msg->returnCode = -1;
+    return -1; // not found
+}
+    /*
     super_t *s = superblock;
     
     // check if inode allocated, TODO: ensure bitmap thingy works
@@ -197,7 +257,9 @@ int Lookup(int pinum, char *name, msg_t *server_msg)
     msync(fs_img, fs_img_size, MS_SYNC);
     server_msg->returnCode = -1;
     return -1;
+
 }
+    */
 
 int Stat(int inum, msg_t *server_msg)
 {
@@ -317,12 +379,16 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
     }
 
     // if already created great success!
+    /*
     if(LookupHelper(pinum, name) != -1){
         server_msg->returnCode = 0;
         return 0;
     }
+    */
 
-    if(inodeTable[pinum].type == 1){ //Parent inode is a file 
+    inode_t *pinode = inodeTable + pinum;
+
+    if(pinode->type == 1){ //Parent inode is a file 
         return -1;
     }
 
@@ -335,14 +401,13 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
             break;
         }
     }
-
+    printf("inum, %d\n", inum);
     // unable to allocate a new inode number
     if(inum == -1){
         server_msg->returnCode = -1;
         return -1;
     }
 
-    inode_t *pinode = inodeTable + pinum;
     if(type == 0){ // inode is a new directory
         dir_ent_t *parentDir = (dir_ent_t*)(fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
         int inumIdx = 0;

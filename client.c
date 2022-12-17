@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
 
     printf("BEFORE CREAT\n");
     printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
+    //printf("Creating blank dir: %d\n",MFS_Creat(0,1,"file1"));
     printf("AFTER CREAT\n");
 
     printf("BEFORE LOOKUP\n");

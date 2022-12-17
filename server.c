@@ -215,12 +215,20 @@ int LookupHelper(int pinum, char *name)
 
 int Stat(int inum, s_msg_t server_msg, struct sockaddr_in addr)
 {
-    // check for invalid inum or invalid mfs_stat
     if (inum < 0 || superblock->num_inodes < inum)
     {
         server_msg.returnCode = -1;
+        UDP_Write(file_d, &addr, (void *)&server_msg, sizeof(server_msg));
         return -1;
     }
+    inode_t data = inodeTable[inum];
+    server_msg.size = data.size; // size of the inode
+    server_msg.type = data.type; // type of the inode
+    server_msg.returnCode = 0;
+    UDP_Write(file_d, &addr, (void *)&server_msg, sizeof(server_msg));
+    /*
+    // check for invalid inum or invalid mfs_stat
+
 
     // check that the inode actually exist looking at the bitmap
     // use checkInodeAllocated()
@@ -249,6 +257,7 @@ int Stat(int inum, s_msg_t server_msg, struct sockaddr_in addr)
     
     fsync(file_d);
     return 0;
+    */
 }
 
 int Write(int inum, char *buffer, int offset, int nbytes)
@@ -327,6 +336,10 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         server_msg.returnCode = -1;
         return -1;
     }
+    if (get_bit(inodeBitmap,pinum) == 0){
+        server_msg.returnCode = -1;
+        return -1;
+    }
     if (pinum < 0 || name == NULL || strlen(name) > 28)
     {
         server_msg.returnCode = -1;
@@ -381,20 +394,21 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
 
         // get parent size
         // figure out what the new size will be (parent->size + sizeof(dirent_t))
-        // Do we need a new block for the parent? - create one
+        // Do we need a new block for the parent? - create one MIGHT BE A TEST CASE
         // Go to parent->direct[whatever] and add a dirent at the end
         // Set parent size to new size
 
         int entryFound = 0;
         for(int i = 0; i < DIRECT_PTRS; i++){
             if(inodeTable[pinum].direct[i] != -1){
-                dir_block_t * parentEntries = (dir_block_t*) fs_img + inodeTable[pinum].direct[i] * UFS_BLOCK_SIZE;
+                dir_block_t * parentEntries = (dir_block_t*) (fs_img + inodeTable[pinum].direct[i] * UFS_BLOCK_SIZE);
                 for(int j = 0; j < UFS_BLOCK_SIZE / sizeof(MFS_DirEnt_t); j++){
                     if(parentEntries->entries[j].inum == -1){
                         parentEntries->entries[j].inum = newInode;
-                        memcpy(&(parentEntries->entries[j].name), &name, 28);
+                        memcpy(parentEntries->entries[j].name, name, strlen(name)); //where we do the strcpy
                         printf("Created entry for %s, %d\n", parentEntries->entries[j].name, newInode);
                         entryFound = 1;
+                        inodeTable[pinum].size += 32;
                         break;
                     }
                 }
@@ -410,12 +424,10 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         // find unallocated datablock via bitmap 
         int n = -1;
 
-     // get data bitmap
-        long bitmapAddr = (long)(fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE);
         // find first unallocated block and mark it to be unallocated
         for(n= 0; n < s.num_data; n++){
-            if(get_bit((unsigned int*)bitmapAddr, n) == 0){ 
-                set_bit((unsigned int*)(fs_img + s.data_bitmap_addr * UFS_BLOCK_SIZE), n);
+            if(get_bit(dataBitmap, n) == 0){ 
+                set_bit(dataBitmap, n);
                 break;
             }
         }
@@ -425,23 +437,22 @@ int Creat(int pinum, int type, char *name, s_msg_t server_msg, struct sockaddr_i
         }
 
         //pointer to the newly allocated data block
-        dir_block_t dir;
+        dir_block_t * dir;
         void * dir_addr = (void *)(fs_img + s.data_region_addr * UFS_BLOCK_SIZE + n * UFS_BLOCK_SIZE);
-        memcpy(&dir, dir_addr, sizeof(dir_block_t));
-        //= (dir_block_t*) fs_img + s.data_region_addr * UFS_BLOCK_SIZE + n * UFS_BLOCK_SIZE;
+        dir = (dir_block_t*) dir_addr;
         //printf("%p\n", &dir);
         // set name and inode numbers 
-        dir.entries[0].inum = newInode;
-        strcpy(dir.entries[0].name, ".");
-        dir.entries[1].inum = pinum;
-        strcpy(dir.entries[1].name, "..");
-
+        dir->entries[0].inum = newInode;
+        strcpy(dir->entries[0].name, ".");
+        dir->entries[1].inum = pinum;
+        strcpy(dir->entries[1].name, "..");
+    
         inodeTable[newInode].direct[0] = n;
 
         for(int i = 2; i < UFS_BLOCK_SIZE / 32; i++){
-            dir.entries[i].inum = -1;
+            dir->entries[i].inum = -1;
         }
-        memcpy(dir_addr, &dir, sizeof(dir_block_t));
+        //memcpy(dir_addr, &dir, sizeof(dir_block_t));
         for(int i = 1; i < DIRECT_PTRS; i++){
             inodeTable[newInode].direct[i] = -1;
         }

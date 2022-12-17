@@ -28,8 +28,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9843
-/tmp/tmpGBLzRn/p/server 9843 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7906
+/tmp/tmpF65rXH/p/server 7906 /home/anuj/CS537NEW/p4/test.img
 server:: waiting...
 IN SERVER
 
@@ -51,13 +51,86 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7333
-/tmp/tmpGBLzRn/p/server 7333 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5007
+/tmp/tmpF65rXH/p/server 5007 /home/anuj/CS537NEW/p4/test.img
+server:: waiting...
+IN SERVER
+Creating test in 0
+Created entry for test, 1
+server:: waiting...
+IN SERVER
+IN LOOKUPSERVER GOODserver:: waiting...
+IN SERVER
 
 
-test creat FAILED
+test creat PASSED
  (creat a file and check with lookup)
+
+('starting', 'write')
+
+**********************************************************************
+
+Test write
+write then read one block
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 6279
+/tmp/tmpF65rXH/p/server 6279 /home/anuj/CS537NEW/p4/test.img
+
+
+test write FAILED
+ (write then read one block)
  Timelimit (10.0s) exceeded
 
-Skipped 16 tests.
+('starting', 'stat')
+
+**********************************************************************
+
+Test stat
+stat a regular file
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 9610
+/tmp/tmpF65rXH/p/server 9610 /home/anuj/CS537NEW/p4/test.img
+
+
+test stat FAILED
+ (stat a regular file)
+ Timelimit (10.0s) exceeded
+
+('starting', 'overwrite')
+
+**********************************************************************
+
+Test overwrite
+overwrite a block
+
+**********************************************************************
+total blocks        36
+  inodes            32 [size of each: 128]
+  data blocks       32
+layout details
+  inode bitmap address/len 1 [1]
+  data bitmap address/len  2 [1]
+Starting server on port 7557
+/tmp/tmpF65rXH/p/server 7557 /home/anuj/CS537NEW/p4/test.img
+
+
+test overwrite FAILED
+ (overwrite a block)
+ User interrupted test
+
+Skipped 13 tests.
 To keep testing after failing a test, use flag '-c' or '--continue'

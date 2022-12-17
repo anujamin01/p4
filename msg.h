@@ -24,6 +24,10 @@ typedef struct{
     int offset;
     int nbytes;
     int type;
+    int size;
+    int returnCode;
+    int inode;
+    MFS_Stat_t m;
 } msg_t;
 
 // move buffer outside and increase size then concatenate the struct msg_t to the buffer in the mfs write or whatever

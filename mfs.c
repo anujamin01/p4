@@ -1,34 +1,43 @@
 #include "mfs.h"
 #include "udp.h"
 #include "msg.h"
+#include "ufs.h"
 #include <string.h>
 
 int on = 0;
 
-struct sockaddr_in server_addr;
+struct sockaddr_in server_addr, ret_addr;
 int fd;
 
 int MFS_Init(char *hostname, int port){
+    fd = UDP_Open(7612);
+    if(fd < 0){
+        printf("UDP_Open failed\n");
+        return fd;
+    }
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
-    if(rc != 0){
+    if(rc < 0){
         printf("Failed to set up server address\n");
         return rc;
     }
-    fd = UDP_Open(7612);
     return 0;
 }
 
 int MFS_Lookup(int pinum, char *name){
+    if(fd<0){
+        return fd;
+    }
     if (pinum < 0){
-        printf("pinum\n");
+        printf("pinum bad\n");
         return -1;
     }
-    if(strlen(name) > 100 || name == NULL){
-        printf("name\n");
+    if(strlen(name) > 28 || name == NULL){
+        printf("name bad\n");
+        return -1;
     }
     
     msg_t m;
-    s_msg_t s_m;
+    //s_msg_t s_m;
     m.func = LOOKUP;
     m.pinum = pinum;
     int i = 0;
@@ -39,79 +48,119 @@ int MFS_Lookup(int pinum, char *name){
     m.name[i] = '\0';
     //memcpy(m.name, name, strlen(name));
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+    int rc = UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
 
-    struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m));
-    return s_m.inode;
+    rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t));
+    if(rc<0){
+        printf("library error\n");
+        return -1;
+    }
+    return m.inode;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m){
+    if(fd<0){
+        return fd;
+    }
     msg_t message;
-    s_msg_t server_message;
+    //s_msg_t server_message;
     message.func = STAT;
     message.inum = inum;
     
-    UDP_Write(fd, &server_addr, (char* )&message, sizeof(message));
+    int rc = UDP_Write(fd, &server_addr, (char* )&message, sizeof(msg_t));
 
-    struct sockaddr_in ret_addr;
-
-    UDP_Read(fd, &ret_addr, (char*)&server_message, sizeof(server_message));
-    memcpy(&server_message.m, m, sizeof(MFS_Stat_t));
-    return server_message.returnCode;
+    rc = UDP_Read(fd, &ret_addr, (char*)&message, sizeof(msg_t));
+    if(rc<0){
+        printf("library error\n");
+        return -1;
+    }
+    m->size = message.size;
+    m->type = message.type;
+    //memcpy(&message.m, m, sizeof(MFS_Stat_t));
+    return message.returnCode;
 }
 
 int MFS_Write(int inum, char *buffer, int offset, int nbytes){
+    if(fd<0){
+        return fd;
+    }
     msg_t m;
-    s_msg_t s_m;
+    //s_msg_t s_m;
     m.func = WRITE;
     m.inum = inum;
-    memcpy(buffer, m.buffer, nbytes);
+    int i;
+    for (i = 0; i < strlen(buffer); i++)
+    {
+        m.buffer[i] = buffer[i];
+    }
+    m.buffer[i] = '\0';
+    //memcpy(m.buffer, buffer, nbytes);
     m.offset = offset;
     m.nbytes = nbytes;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+    int rc = UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
 
-    struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m));
-    return 0;
+    rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t));
+    if(rc < 0){
+        printf("library error\n");
+        return -1;
+    }
+    return m.returnCode;
 }
 
 int MFS_Read(int inum, char *buffer, int offset, int nbytes){
+    if(fd<0){
+        return fd;
+    }
+    if(nbytes>UFS_BLOCK_SIZE){
+        return -1;
+    }
     msg_t m;
-    s_msg_t s_m;
+    //s_msg_t s_m;
 
     m.func = READ;
     m.inum = inum;
-    memcpy(buffer, m.buffer, nbytes);
+    int i;
+    for (i = 0; i < strlen(buffer); i++)
+    {
+        m.buffer[i] = buffer[i];
+    }
+    m.buffer[i] = '\0';
+    //memcpy(m.buffer, nbytes);
     m.offset = offset;
     m.nbytes = nbytes;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+    int rc = UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
 
-    struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
-    if(s_m.type == 0){
-        // TODO: fill up a MFS_DirEnt_t struct?
-        return 0;
+    rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t)); 
+    if(rc<0){
+        printf("library error\n");
+        return -1;
     }
-    memcpy(buffer, s_m.buffer, nbytes);
-    return 0;
+    if(m.returnCode == -1){
+        // TODO: fill up a MFS_DirEnt_t struct?
+        return -1;
+    }
+    int j;
+    for (j = 0; j < strlen(buffer); j++)
+    {
+        m.buffer[j] = buffer[j];
+    }
+    m.buffer[j] = '\0';
+    //memcpy(buffer, m.buffer, nbytes);
+    return m.returnCode;
 }
 
 int MFS_Creat(int pinum, int type, char *name){
-    /*
-    printf("Reciving variables...");
-    printf("pinum %d\n",pinum);
-    printf("pinum %d\n",type);
-    printf("pinum %s\n",name);
-    */
+    if(fd<0){
+        return fd;
+    }
 
     if (strlen(name) > 28 || name == NULL){
         return -1;
     }
     msg_t message;
-    s_msg_t s_m;
+    //s_msg_t s_m;
     message.func = CREAT;
     message.pinum = pinum;
     message.type = type;
@@ -122,47 +171,59 @@ int MFS_Creat(int pinum, int type, char *name){
     }
     message.name[i] = '\0';
 
-    /*
-    printf("Sending variables...");
-    printf("pinum %d\n",message.pinum);
-    printf("pinum %d\n",message.type);
-    printf("pinum %s\n",message.name);
-    */
+    int rc = UDP_Write(fd, &server_addr, (char* )&message, sizeof(msg_t));
 
-    UDP_Write(fd, &server_addr, (char* )&message, sizeof(message));
+    rc = UDP_Read(fd, &ret_addr, (char*)&message, sizeof(msg_t)); 
+    if(rc<0){
+        printf("library error\n");
+        return -1;
+    }
 
-    struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
-
-    return s_m.returnCode;
+    return message.returnCode;
 }
 
 int MFS_Unlink(int pinum, char *name){
+    if(fd<0){
+        return fd;
+    }
     msg_t m;
-    s_msg_t s_m;
+    //s_msg_t s_m;
 
     m.func = UNLINK;
     m.pinum = pinum;
-    unsigned long name_size = sizeof(name);
-    memcpy(name, m.name, name_size);
+   //unsigned long name_size = sizeof(name);
+    //memcpy(name, m.name, name_size);
+    int i;
+    for (i = 0; i < strlen(name); i++)
+    {
+        m.name[i] = name[i];
+    }
+    m.name[i] = '\0';
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
+    int rc = UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
 
-    struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
+    rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t)); 
+    if(rc<0){
+        printf("library error\n");
+        return -1;
+    }
 
-    return s_m.returnCode;
+    return m.returnCode;
 }
 
 int MFS_Shutdown(){
+    if(fd<0){
+        return fd;
+    }
     msg_t m;
-    s_msg_t s_m;
+    //s_msg_t s_m;
 
     m.func = SHUTDOWN;
 
-    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
-
-    struct sockaddr_in ret_addr;
-    UDP_Close(fd);
+    int rc = UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
+    if(rc<0){
+        return -1;
+    }
+    //UDP_Close(fd);
     return 0;
 }

@@ -308,10 +308,8 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         return -1;
     }
 
-    super_t s = *superblock;
-
     // if already created great success!
-    if(Lookup(pinum, name, server_msg) != -1){
+    if(LookupHelper(pinum, name) != -1){
         server_msg->returnCode = 0;
         return 0;
     }
@@ -322,7 +320,7 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
 
     // look for spot to put new inode
     int inum = 0;
-    for(int i = 0; i < s.num_inodes; i++){
+    for(int i = 0; i < superblock->num_inodes; i++){
         int rel = get_bit(inodeBitmap, i);
         if(rel  == 0){ // found an unallocated inode
             inum = i;
@@ -336,15 +334,91 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         return -1;
     }
 
-    inode_t *pinode;// = inodeTable[pinum];
+    inode_t *pinode = inodeTable + pinum;
     if(type == 0){ // inode is a new directory
-
-    } else{ // inode is a file
-        dir_ent_t *parentDir = (dir_ent_t*)(fs_img + pinode->direct[0]);
+        dir_ent_t *parentDir = (dir_ent_t*)(fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
         int inumIdx = 0;
-        for(inumIdx = 0; inumIdx < 128; inumIdx++){
-            
+        // iterate until we found empty spot
+        for(inumIdx = 0; inumIdx < 128 && parentDir[inumIdx].inum != -1; inumIdx++){
+            if (parentDir[inumIdx].inum != -1){
+                // found matching: Redundant code DELETE!!
+                if(strcmp(parentDir[inumIdx].name,name) == 0){
+                    server_msg->returnCode = 0;
+                    return 0;
+                }
+            }
+            inumIdx++;
         }
+
+        // allocate new spot in databitmap
+        int dnum = -1;
+        for (int i = 0; i < UFS_BLOCK_SIZE; i++){ // perhaps look at 1024??
+            if (get_bit(dataBitmap,i) == 0){
+                dnum = i;
+                break;
+            }
+        }
+        // unable to allocate space for it
+        if (dnum == -1){
+            server_msg->returnCode = -1;
+            return -1;
+        }
+        set_bit(dataBitmap,dnum);
+
+        // fill metadata for new inode
+        inode_t *inode = inodeTable + inum;
+        inode->direct[0] = (superblock->data_region_addr + dnum);
+        inode->size = 2 * sizeof(dir_ent_t);
+        inode->type = type;
+
+        // update parent inode info
+        parentDir[inumIdx].inum = inum;
+        //(parentDir + inumIdx)->inum = inum;
+        strcpy(parentDir[inumIdx].name,name);
+        pinode->size+=32;
+
+        // create datablock for parent
+        dir_block_t b;
+        strcpy(b.entries[0].name, ".");
+        strcpy(b.entries[1].name, "..");
+        b.entries[0].inum = inum;
+        b.entries[1].inum = pinum;
+        for (int k = 2; k < 128; k++){
+            b.entries[k].inum = -1;
+        }
+
+        // update data region address
+        int pwCheck = pwrite(file_d, &b, UFS_BLOCK_SIZE, (superblock->data_region_addr * UFS_BLOCK_SIZE + dnum * UFS_BLOCK_SIZE));
+        if (pwCheck < 0){
+            server_msg->returnCode = -1;
+            return -1;
+        }
+    } else{ // inode is a file
+        dir_ent_t *parentDir = (dir_ent_t*)(fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
+        int inumIdx = 0;
+        // iterate until we found empty spot
+        for(inumIdx = 0; inumIdx < 128 && parentDir[inumIdx].inum != -1; inumIdx++){
+            if (parentDir[inumIdx].inum != -1){
+                // found matching: Redundant code DELETE!!
+                if(strcmp(parentDir[inumIdx].name,name) == 0){
+                    server_msg->returnCode = 0;
+                    return 0;
+                }
+            }
+            inumIdx++;
+        }
+        // mark inum as allocated
+        set_bit(inodeBitmap,inum);
+        // fill metadata for new inode
+        inode_t *inode = inodeTable + inum;
+        inode->size = 0;
+        inode->type = type;
+
+        // update parent inode info
+        parentDir[inumIdx].inum = inum;
+        //(parentDir + inumIdx)->inum = inum;
+        strcpy(parentDir[inumIdx].name,name);
+        pinode->size+=32;
     }
     
     int testSync = msync(fs_img,fs_img_size,MS_SYNC);
@@ -353,6 +427,10 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         return -1;
     }
     testSync = fsync(file_d);
+    if (testSync < 0){
+        printf("Updating fs_img failed");
+        return -1;
+    }
     return 0;
     
     /*
@@ -547,7 +625,7 @@ int main(int argc, char *argv[])
     inodeTable = (inode_t*)(fs_img + superblock->inode_region_addr * UFS_BLOCK_SIZE);
     inodeBitmap = (unsigned int *)(fs_img + superblock->inode_bitmap_addr * UFS_BLOCK_SIZE);
     dataBitmap = (unsigned int *)(fs_img  + superblock->data_bitmap_addr * UFS_BLOCK_SIZE);
-    dataRegion = (fs_img + superblock->data_region_addr * UFS_BLOCK_SIZE);
+    dataRegion = (void *)(fs_img + superblock->data_region_addr * UFS_BLOCK_SIZE);
     rootInode = inodeTable;
     rootDir = fs_img + (rootInode->direct[0] * UFS_BLOCK_SIZE);
     while (1)

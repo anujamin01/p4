@@ -30,11 +30,9 @@ int MFS_Lookup(int pinum, char *name){
         return fd;
     }
     if (pinum < 0){
-        printf("pinum bad\n");
         return -1;
     }
     if(strlen(name) > 28 || name == NULL){
-        printf("name bad\n");
         return -1;
     }
     
@@ -53,7 +51,6 @@ int MFS_Lookup(int pinum, char *name){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t));
     if(rc<0){
-        printf("library error\n");
         return -1;
     }
     return m.returnCode;
@@ -71,7 +68,6 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&message, sizeof(msg_t));
     if(rc<0){
-        printf("library error\n");
         return -1;
     }
     m->size = message.size;
@@ -99,7 +95,6 @@ int MFS_Write(int inum, char *buffer, int offset, int nbytes){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t));
     if(rc < 0){
-        printf("library error\n");
         return -1;
     }
     return m.returnCode;
@@ -131,7 +126,6 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t)); 
     if(rc<0){
-        printf("library error\n");
         return -1;
     }
     if(m.returnCode == -1){
@@ -173,10 +167,8 @@ int MFS_Creat(int pinum, int type, char *name){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&message, sizeof(msg_t)); 
     if(rc<0){
-        printf("library error\n");
         return -1;
     }
-    //printf("IN MFS CREATE, MESSAGE.RETURNCODE: %d\n", message.returnCode);
     return message.returnCode;
 }
 
@@ -202,7 +194,6 @@ int MFS_Unlink(int pinum, char *name){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&m, sizeof(msg_t)); 
     if(rc<0){
-        printf("library error\n");
         return -1;
     }
 

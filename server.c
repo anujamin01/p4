@@ -86,8 +86,6 @@ int Init(char *hostname, int port, msg_t *server_msg){
     return 0;
 }
 
-
-
 int Lookup(int pinum, char *name, msg_t *server_msg)
 {
 
@@ -367,12 +365,10 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
     
     int testSync = msync(fs_img,fs_img_size,MS_SYNC);
     if (testSync < 0){
-        printf("Updating fs_img failed");
         return -1;
     }
     testSync = fsync(file_d);
     if (testSync < 0){
-        printf("Updating fs_img failed");
         return -1;
     }
     return 0;
@@ -445,17 +441,6 @@ int Shutdown()
     close(file_d);
     UDP_Close(sd);
     exit(0);
-    /*
-    printf("SERVER 1\n");
-    int rc = fsync(file_d);
-    printf("SERVER 2\n");
-    assert(rc>-1);
-    printf("SERVER 3\n");
-    close(file_d);
-    printf("SERVER 4\n");
-    exit(0);
-    printf("SERVER 5\n");
-    */
 }
 
 void intHandler(int dummy) {
@@ -496,7 +481,6 @@ int main(int argc, char *argv[])
     while (1)
     {
         msg_t message;
-        //s_msg_t server_message;
 
         printf("server:: waiting...\n");
         int rc = UDP_Read(sd, &addr, (char *)&message, sizeof(msg_t));

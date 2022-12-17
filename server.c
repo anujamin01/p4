@@ -293,11 +293,11 @@ int Read(int inum, char *buffer, int offset, int nbytes, msg_t *server_message)
                 if((offset/UFS_BLOCK_SIZE) < DIRECT_PTRS){
                     if((curr_inode->direct[offset/UFS_BLOCK_SIZE]) != -1){
                         server_message->type = curr_inode->type;
-                    }
-                    int nextBlock = (curr_inode->direct[offset/UFS_BLOCK_SIZE]) * UFS_BLOCK_SIZE + (offset % UFS_BLOCK_SIZE);
-                    int rc = pread(file_d, buffer, nbytes, nextBlock);
-                    if(rc<0){
-                        server_message->returnCode = -1;
+                        int nextBlock = (curr_inode->direct[offset/UFS_BLOCK_SIZE]) * UFS_BLOCK_SIZE + (offset % UFS_BLOCK_SIZE);
+                        int rc = pread(file_d, buffer, nbytes, nextBlock);
+                        if(rc<0){
+                            server_message->returnCode = -1;
+                        }
                     }
                 }
             }

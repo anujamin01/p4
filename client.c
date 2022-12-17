@@ -7,19 +7,24 @@
 
 // client code
 int main(int argc, char *argv[]) {
-    MFS_Init("localhost", 10020);
+    MFS_Init("localhost", atoi(argv[1]));
 
     printf("BEFORE CREAT\n");
     printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
     printf("AFTER CREAT\n");
-    printf("Lookup returned: %d\n", MFS_Lookup(0, "."));
+
+    printf("BEFORE LOOKUP\n");
+    printf("Lookup returned: %d\n", MFS_Lookup(0, "dir1"));
+    printf("AFTER LOOKUP\n");
+
+    /*
     printf("got past init\n");
     printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
     printf("got past creat\n");
     printf("Looking up blank dir: %d\n",MFS_Lookup(0,"dir1"));
+    */
 
     printf("Shtdown: %d\n", MFS_Shutdown());
-    //printf("Shutdown didn't work\n");
 }
 
 /*

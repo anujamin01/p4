@@ -9,29 +9,6 @@ struct sockaddr_in server_addr;
 int fd;
 
 int MFS_Init(char *hostname, int port){
-    /*
-    struct sockaddr_in addrSnd, addrRcv;
-    int sd = UDP_Open(20000);
-    int rc = UDP_FillSockAddr(&addrSnd, "localhost", 10000);
-
-    msg_t message;
-    message.hostname = hostname;
-    message.port = port;
-
-    printf("client:: send message");
-    rc = UDP_Write(sd, &addrSnd, (char* )&message, 1000);
-    if (rc < 0) {
-        printf("client:: failed to send\n");
-        exit(1);
-    }
-
-    printf("client:: wait for reply...\n");
-    s_msg_t server_message;
-    rc = UDP_Read(sd, &addrRcv, (char* )&server_message, 1000);
-    printf("client:: got reply [size:%d contents:(%s)\n", server_message.returnCode, server_message.buffer);
-    return 0;
-    */
-
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
     if(rc != 0){
         printf("Failed to set up server address\n");
@@ -42,33 +19,31 @@ int MFS_Init(char *hostname, int port){
 }
 
 int MFS_Lookup(int pinum, char *name){
-    //printf("mfs 54\n");
     if (pinum < 0){
-        //printf("in pinum if\n");
+        printf("pinum\n");
         return -1;
     }
     if(strlen(name) > 100 || name == NULL){
-        //printf("in strlen name check if\n");
-        return -1;
+        printf("name\n");
     }
     
-    //printf("mfs 54\n");
-    msg_t *m;
-    s_msg_t *s_m;
-    m->func = LOOKUP;
-    m->pinum = pinum;
-    //printf("mfs 58\n");
-    memcpy(m->name, name, strlen(name));
-    //printf("mfs 60\n");
+    msg_t m;
+    s_msg_t s_m;
+    m.func = LOOKUP;
+    m.pinum = pinum;
+    int i = 0;
+    for (i = 0; i < strlen(name); i++)
+    {
+        m.name[i] = name[i];
+    }
+    m.name[i] = '\0';
+    //memcpy(m.name, name, strlen(name));
 
-    //printf("BEFORE WRITE\n");
-    UDP_Write(fd, &server_addr, (char* )m, sizeof(m));
-    //printf("PASSED WRITE\n");
+    UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
 
     struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)s_m, sizeof(s_m));
-    //printf("in return code: %d, %d\n", s_m->inode, s_m->returnCode);
-    return s_m->inode;
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m));
+    return s_m.inode;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m){
@@ -84,7 +59,6 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
     UDP_Read(fd, &ret_addr, (char*)&server_message, sizeof(server_message));
     memcpy(&server_message.m, m, sizeof(MFS_Stat_t));
     return server_message.returnCode;
-    //return 0;
 }
 
 int MFS_Write(int inum, char *buffer, int offset, int nbytes){
@@ -126,43 +100,41 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
 }
 
 int MFS_Creat(int pinum, int type, char *name){
+    /*
+    printf("Reciving variables...");
+    printf("pinum %d\n",pinum);
+    printf("pinum %d\n",type);
+    printf("pinum %s\n",name);
+    */
+
     if (strlen(name) > 28 || name == NULL){
         return -1;
     }
-    //printf("got to mfs_creat\n");
     msg_t message;
-
-    msg_t *m = malloc(sizeof(msg_t));
-    s_msg_t *s_m = malloc(sizeof(s_msg_t));
-
+    s_msg_t s_m;
     message.func = CREAT;
     message.pinum = pinum;
     message.type = type;
-
-    m->func = CREAT;
-    m->pinum = pinum;
-    m->type = type;
     int i = 0;
     for (i = 0; i < strlen(name); i++)
     {
         message.name[i] = name[i];
     }
     message.name[i] = '\0';
-    //unsigned long name_size = sizeof(name);
-    strncpy(m->name, name, strlen(name));
-    //printf("Before mem\n");
-    //memcpy(m->name, &name, sizeof(name));
-    //printf("Name: %s\n", m->name);
-    //printf("After mem\n");
 
-    
+    /*
+    printf("Sending variables...");
+    printf("pinum %d\n",message.pinum);
+    printf("pinum %d\n",message.type);
+    printf("pinum %s\n",message.name);
+    */
 
     UDP_Write(fd, &server_addr, (char* )&message, sizeof(message));
 
     struct sockaddr_in ret_addr;
-    UDP_Read(fd, &ret_addr, (char*)s_m, sizeof(s_m)); 
+    UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
 
-    return s_m->returnCode;
+    return s_m.returnCode;
 }
 
 int MFS_Unlink(int pinum, char *name){
@@ -191,7 +163,6 @@ int MFS_Shutdown(){
     UDP_Write(fd, &server_addr, (char* )&m, sizeof(m));
 
     struct sockaddr_in ret_addr;
-    //UDP_Read(fd, &ret_addr, (char*)&s_m, sizeof(s_m)); 
     UDP_Close(fd);
     return 0;
 }

@@ -3,6 +3,8 @@
 #include "msg.h"
 #include "ufs.h"
 #include <string.h>
+#include <time.h>
+#include <stdio.h>
 
 int on = 0;
 
@@ -10,14 +12,14 @@ struct sockaddr_in server_addr, ret_addr;
 int fd;
 
 int MFS_Init(char *hostname, int port){
-    fd = UDP_Open(7612);
+    // open random port
+    fd = UDP_Open(rand() % (10000) + 40000);
     if(fd < 0){
-        printf("UDP_Open failed\n");
         return fd;
     }
+    
     int rc = UDP_FillSockAddr(&server_addr, hostname, port);
     if(rc < 0){
-        printf("Failed to set up server address\n");
         return rc;
     }
     return 0;
@@ -37,7 +39,7 @@ int MFS_Lookup(int pinum, char *name){
     }
     
     msg_t m;
-    //s_msg_t s_m;
+
     m.func = LOOKUP;
     m.pinum = pinum;
     int i = 0;
@@ -46,7 +48,6 @@ int MFS_Lookup(int pinum, char *name){
         m.name[i] = name[i];
     }
     m.name[i] = '\0';
-    //memcpy(m.name, name, strlen(name));
 
     int rc = UDP_Write(fd, &server_addr, (char* )&m, sizeof(msg_t));
 
@@ -55,7 +56,7 @@ int MFS_Lookup(int pinum, char *name){
         printf("library error\n");
         return -1;
     }
-    return m.inode;
+    return m.returnCode;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m){
@@ -63,7 +64,6 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
         return fd;
     }
     msg_t message;
-    //s_msg_t server_message;
     message.func = STAT;
     message.inum = inum;
     
@@ -76,7 +76,6 @@ int MFS_Stat(int inum, MFS_Stat_t *m){
     }
     m->size = message.size;
     m->type = message.type;
-    //memcpy(&message.m, m, sizeof(MFS_Stat_t));
     return message.returnCode;
 }
 
@@ -85,7 +84,6 @@ int MFS_Write(int inum, char *buffer, int offset, int nbytes){
         return fd;
     }
     msg_t m;
-    //s_msg_t s_m;
     m.func = WRITE;
     m.inum = inum;
     int i;
@@ -94,7 +92,6 @@ int MFS_Write(int inum, char *buffer, int offset, int nbytes){
         m.buffer[i] = buffer[i];
     }
     m.buffer[i] = '\0';
-    //memcpy(m.buffer, buffer, nbytes);
     m.offset = offset;
     m.nbytes = nbytes;
 
@@ -159,6 +156,7 @@ int MFS_Creat(int pinum, int type, char *name){
     if (strlen(name) > 28 || name == NULL){
         return -1;
     }
+    
     msg_t message;
     //s_msg_t s_m;
     message.func = CREAT;
@@ -178,7 +176,7 @@ int MFS_Creat(int pinum, int type, char *name){
         printf("library error\n");
         return -1;
     }
-
+    //printf("IN MFS CREATE, MESSAGE.RETURNCODE: %d\n", message.returnCode);
     return message.returnCode;
 }
 
@@ -212,11 +210,10 @@ int MFS_Unlink(int pinum, char *name){
 }
 
 int MFS_Shutdown(){
-    if(fd<0){
+   if(fd<0){
         return fd;
     }
     msg_t m;
-    //s_msg_t s_m;
 
     m.func = SHUTDOWN;
 
@@ -224,6 +221,5 @@ int MFS_Shutdown(){
     if(rc<0){
         return -1;
     }
-    //UDP_Close(fd);
     return 0;
 }

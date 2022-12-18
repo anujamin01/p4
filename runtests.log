@@ -28,8 +28,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 6593
-/tmp/tmpzoQQ0O/p/server 6593 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8128
+/tmp/tmpkyPa3M/p/server 8128 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 
 
@@ -50,8 +50,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7200
-/tmp/tmpzoQQ0O/p/server 7200 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8166
+/tmp/tmpkyPa3M/p/server 8166 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 CREAT END
@@ -81,8 +81,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8757
-/tmp/tmpzoQQ0O/p/server 8757 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 9872
+/tmp/tmpkyPa3M/p/server 9872 /home/prasun/CS537/p4/p4/test.img
 ('START BLOCK 1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00END BLOCK 1')
 ('\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 Failure: Corrupt data returned by read
@@ -106,8 +106,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7928
-/tmp/tmpzoQQ0O/p/server 7928 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7738
+/tmp/tmpkyPa3M/p/server 7738 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 CREAT END
@@ -120,6 +120,8 @@ IN LOOKUP
 server:: waiting...
 server:: waiting...
 server:: waiting...
+SERVER 2
+SERVER 3
 server:: waiting...
 server:: waiting...
 
@@ -141,8 +143,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9924
-/tmp/tmpzoQQ0O/p/server 9924 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6711
+/tmp/tmpkyPa3M/p/server 6711 /home/prasun/CS537/p4/p4/test.img
 Failure: Corrupt data returned by read
 
 
@@ -164,14 +166,14 @@ total blocks        39
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9014
-/tmp/tmpzoQQ0O/p/server 9014 /home/prasun/CS537/p4/p4/test.img
-Failure: Corrupt data returned by read
+Starting server on port 9597
+/tmp/tmpkyPa3M/p/server 9597 /home/prasun/CS537/p4/p4/test.img
+Failure: MFS_Write returned failure inum=1 block=16384
 
 
 test maxfile FAILED
  (write largest possible file)
- Corrupt data returned by read
+ MFS_Write returned failure inum=1 block=16384
 
 ('starting', 'maxfile2')
 
@@ -187,16 +189,15 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7951
-/tmp/tmpzoQQ0O/p/server 7951 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8011
+/tmp/tmpkyPa3M/p/server 8011 /home/prasun/CS537/p4/p4/test.img
 31
-write more than need
-Failure: Corrupt data returned by read
+Failure: MFS_Write returned failure inum=1 block=16384
 
 
 test maxfile2 FAILED
  (write more blocks than possible)
- Corrupt data returned by read
+ MFS_Write returned failure inum=1 block=16384
 
 ('starting', 'dir1')
 
@@ -212,19 +213,19 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8986
-/tmp/tmpzoQQ0O/p/server 8986 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7241
+/tmp/tmpkyPa3M/p/server 7241 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 name: .
 currBlock[0].name, currBlock[0].inum: ., 0...
 currBlock[1].name, currBlock[1].inum: .., 0...
-currBlock[1].name, currBlock[1].inum: äÍ`ý, -1...
+currBlock[1].name, currBlock[1].inum: äijŸü, -1...
 IN LOOKUP
 server:: waiting...
 name: ..
 currBlock[0].name, currBlock[0].inum: ., 0...
 currBlock[1].name, currBlock[1].inum: .., 0...
-currBlock[1].name, currBlock[1].inum: äÍ`ý, -1...
+currBlock[1].name, currBlock[1].inum: äijŸü, -1...
 IN LOOKUP
 server:: waiting...
 
@@ -246,8 +247,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9993
-/tmp/tmpzoQQ0O/p/server 9993 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5868
+/tmp/tmpkyPa3M/p/server 5868 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 parentDir[inumIdx].name: testdir...
@@ -280,8 +281,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9080
-/tmp/tmpzoQQ0O/p/server 9080 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7188
+/tmp/tmpkyPa3M/p/server 7188 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 CREAT END
@@ -314,8 +315,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5301
-/tmp/tmpzoQQ0O/p/server 5301 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5718
+/tmp/tmpkyPa3M/p/server 5718 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 CREAT END
@@ -346,8 +347,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9025
-/tmp/tmpzoQQ0O/p/server 9025 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6564
+/tmp/tmpkyPa3M/p/server 6564 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 CREAT END
@@ -384,8 +385,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9169
-/tmp/tmpzoQQ0O/p/server 9169 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5916
+/tmp/tmpkyPa3M/p/server 5916 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 IN CREAT
 parentDir[inumIdx].name: test...
@@ -425,8 +426,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8483
-/tmp/tmpzoQQ0O/p/server 8483 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8758
+/tmp/tmpkyPa3M/p/server 8758 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Creat returned failure inum=1 type=1 name='testfile'
 
 
@@ -448,8 +449,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8714
-/tmp/tmpzoQQ0O/p/server 8714 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 9752
+/tmp/tmpkyPa3M/p/server 9752 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 MFS_CREAT 1
 
@@ -471,8 +472,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8399
-/tmp/tmpzoQQ0O/p/server 8399 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8727
+/tmp/tmpkyPa3M/p/server 8727 /home/prasun/CS537/p4/p4/test.img
 Failure: Corrupt data returned by read
 
 
@@ -494,8 +495,8 @@ total blocks        39
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 6844
-/tmp/tmpzoQQ0O/p/server 6844 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7073
+/tmp/tmpkyPa3M/p/server 7073 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Creat returned failure inum=1 type=1 name='0'
 
 
@@ -517,8 +518,8 @@ total blocks        39
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5838
-/tmp/tmpzoQQ0O/p/server 5838 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7994
+/tmp/tmpkyPa3M/p/server 7994 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Creat returned failure inum=1 type=0 name='0'
 
 
@@ -550,11 +551,11 @@ test overwrite FAILED
 
 test maxfile FAILED
  (write largest possible file)
- Corrupt data returned by read
+ MFS_Write returned failure inum=1 block=16384
 
 test maxfile2 FAILED
  (write more blocks than possible)
- Corrupt data returned by read
+ MFS_Write returned failure inum=1 block=16384
 
 test dir1 PASSED
  (check root for dot entries)

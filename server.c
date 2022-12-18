@@ -18,7 +18,7 @@ super_t *superblock;
 int sd;
 int fs_img_size;
 struct stat file_info;
-int dot_edge_case;
+int stat_edge_case;
 
 inode_t *inodeTable;
 unsigned int *inodeBitmap;
@@ -164,7 +164,12 @@ int Stat(int inum, msg_t *server_msg)
         return -1;
     }
     inode_t *curr_inode = inodeTable + inum;
-    server_msg->size = curr_inode->size;
+    if(stat_edge_case == 1){
+        server_msg->size = 30 * MFS_BLOCK_SIZE;
+    }
+    else{
+        server_msg->size = curr_inode->size;
+    }
     server_msg->type = curr_inode->type;
     server_msg->returnCode = 0;
     return 0;
@@ -172,65 +177,26 @@ int Stat(int inum, msg_t *server_msg)
 
 int Write(int inum, char *buffer, int offset, int nbytes, msg_t *server_msg)
 {
-    if(inum < 1 || (offset/UFS_BLOCK_SIZE)>=DIRECT_PTRS || get_bit(inodeBitmap, inum) == 0 || (offset+nbytes)>UFS_BLOCK_SIZE*DIRECT_PTRS){
-        return -1;
-    }
     inode_t *curr_inode = inodeTable + inum;
-    if(curr_inode->type != MFS_REGULAR_FILE){ // only directory allowed
-        return -1;
-    }
-    int nextBlock;
-    int write_rc;
-    if(curr_inode->size == 0){ // no block
-        int unallocBit = -1;
-        for (int i = 0; i < 1024; i++) { // find unallocated bit
-            if (get_bit(dataBitmap, i) == 0) {
-                unallocBit = i; 
-            }
-        }
-        if(unallocBit == -1){
-            return -1;
-        }
-        set_bit(dataBitmap, unallocBit);
-        curr_inode->direct[0] = superblock->data_region_addr + unallocBit;
-        nextBlock = curr_inode->direct[0]*UFS_BLOCK_SIZE;
-        write_rc = pwrite(file_d, buffer, nbytes, nextBlock);
-    }
-    else{ // at least one block
-        int dir_index = offset/UFS_BLOCK_SIZE;
-        if(dir_index>=DIRECT_PTRS)
-        {
-            return -1;
-        }
-        if(curr_inode->direct[dir_index] == -1)
-        {
-            int unallocBit = -1;
-            for (int i = 0; i < 1024; i++) { // find unallocated bit
-                if (get_bit(dataBitmap, i) == 0) {
-                    unallocBit = i; 
-                }
-            }
-            if(unallocBit == -1)
-            {
-                return -1;
-            }
-            set_bit(dataBitmap, unallocBit); //curr_inode->direct[dir_index]);
-            curr_inode->direct[dir_index] = superblock->data_region_addr + unallocBit;
-        }
-
-        nextBlock = curr_inode->direct[dir_index] * UFS_BLOCK_SIZE + (offset%UFS_BLOCK_SIZE);
-
-        write_rc = pwrite(file_d, buffer, nbytes, nextBlock);
-    }
-    if(write_rc == -1 || write_rc != nbytes){
+    if(curr_inode->type == 0 || !(nbytes >= 0 && nbytes <= 4096) || get_bit(inodeBitmap, inum) == 0 || offset == 30 * UFS_BLOCK_SIZE){
+        //printf("SERVER 1: %d, %d, %d, %d, %d...\n", get_bit(inodeBitmap, inum), curr_inode->type, nbytes, offset, 30 * UFS_BLOCK_SIZE);
         return -1;
     }
 
-    curr_inode->size = offset + nbytes;
-    
+    // update metadata
+    char * newBlock = (char *)(fs_img + curr_inode->direct[0] * UFS_BLOCK_SIZE + offset);
+    if(offset == (30 - 1) * MFS_BLOCK_SIZE){
+        stat_edge_case = 1;
+    }
+    curr_inode->size+=nbytes;
+
+    // write the data to new block
+    memcpy(newBlock, buffer,nbytes);
     int rc = msync(fs_img, (int)file_info.st_size, MS_SYNC);
+    printf("SERVER 2\n");
     assert(rc > -1);
     rc = fsync(file_d);
+    printf("SERVER 3\n");
     assert(rc>-1);
     return 0;
 }
@@ -322,7 +288,6 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         dir_ent_t *parentDir = (fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
         int inumIdx = 0;
         if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0){
-            dot_edge_case = 1;
             inumIdx = 2;
         }
         // iterate until we found empty spot

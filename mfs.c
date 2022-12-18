@@ -8,8 +8,6 @@
 
 int on = 0;
 
-int unlink_edge_case = 0;
-
 struct sockaddr_in server_addr, ret_addr;
 int fd;
 
@@ -116,7 +114,6 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
         return -1;
     }
     msg_t m;
-    //s_msg_t s_m;
 
     m.func = READ;
     m.inum = inum;
@@ -126,7 +123,6 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
         m.buffer[i] = buffer[i];
     }
     m.buffer[i] = '\0';
-    //memcpy(m.buffer, nbytes);
     m.offset = offset;
     m.nbytes = nbytes;
 
@@ -146,23 +142,19 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
         m.buffer[j] = buffer[j];
     }
     m.buffer[j] = '\0';
-    //memcpy(buffer, m.buffer, nbytes);
     return m.returnCode;
 }
 
 int MFS_Creat(int pinum, int type, char *name){
     if(fd<0){
-        printf("MFS_CREAT 1\n");
         return fd;
     }
 
     if (strlen(name) > 28 || name == NULL){
-        printf("MFS_CREAT 1\n");
         return -1;
     }
     
     msg_t message;
-    //s_msg_t s_m;
     message.func = CREAT;
     message.pinum = pinum;
     message.type = type;
@@ -177,7 +169,6 @@ int MFS_Creat(int pinum, int type, char *name){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&message, sizeof(msg_t)); 
     if(rc<0){
-        printf("MFS_CREAT 1\n");
         return -1;
     }
     return message.returnCode;
@@ -188,12 +179,9 @@ int MFS_Unlink(int pinum, char *name){
         return fd;
     }
     msg_t m;
-    //s_msg_t s_m;
 
     m.func = UNLINK;
     m.pinum = pinum;
-   //unsigned long name_size = sizeof(name);
-    //memcpy(name, m.name, name_size);
     int i;
     for (i = 0; i < strlen(name); i++)
     {

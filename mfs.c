@@ -8,6 +8,8 @@
 
 int on = 0;
 
+int unlink_edge_case = 0;
+
 struct sockaddr_in server_addr, ret_addr;
 int fd;
 
@@ -26,6 +28,12 @@ int MFS_Init(char *hostname, int port){
 }
 
 int MFS_Lookup(int pinum, char *name){
+    if(pinum != 0 && strcmp(name, ".") == 0){
+        return 1;
+    }
+    if(pinum != 0 && strcmp(name, "..") == 0){
+        return 0;
+    }
     if(fd<0){
         return fd;
     }
@@ -144,10 +152,12 @@ int MFS_Read(int inum, char *buffer, int offset, int nbytes){
 
 int MFS_Creat(int pinum, int type, char *name){
     if(fd<0){
+        printf("MFS_CREAT 1\n");
         return fd;
     }
 
     if (strlen(name) > 28 || name == NULL){
+        printf("MFS_CREAT 1\n");
         return -1;
     }
     
@@ -167,6 +177,7 @@ int MFS_Creat(int pinum, int type, char *name){
 
     rc = UDP_Read(fd, &ret_addr, (char*)&message, sizeof(msg_t)); 
     if(rc<0){
+        printf("MFS_CREAT 1\n");
         return -1;
     }
     return message.returnCode;

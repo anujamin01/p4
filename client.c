@@ -9,14 +9,21 @@
 int main(int argc, char *argv[]) {
     MFS_Init("localhost", atoi(argv[1]));
 
-    printf("BEFORE CREAT\n");
+    printf("BEFORE CREAT1\n");
     //printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
-    printf("Creating blank dir: %d\n",MFS_Creat(1,0,"test"));
-    printf("AFTER CREAT\n");
+    printf("Creating blank dir: %d\n",MFS_Creat(0,0,"testdir"));
+    printf("AFTER CREAT1\n");
 
+    printf("BEFORE CREAT2\n");
+    //printf("Creating blank dir: %d\n",MFS_Creat(0,0,"dir1"));
+    printf("Creating blank dir: %d\n",MFS_Creat(1,1,"testfile"));
+    printf("AFTER CREAT2\n");
+
+    /*
     printf("BEFORE LOOKUP\n");
-    printf("Lookup returned: %d\n", MFS_Lookup(1, "."));
+    printf("Lookup returned: %d\n", MFS_Lookup(0, "."));
     printf("AFTER LOOKUP\n");
+    */
 
     /*
     printf("got past init\n");

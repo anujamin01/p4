@@ -18,6 +18,7 @@ super_t *superblock;
 int sd;
 int fs_img_size;
 struct stat file_info;
+int dot_edge_case;
 
 inode_t *inodeTable;
 unsigned int *inodeBitmap;
@@ -90,7 +91,8 @@ int Lookup(int pinum, char *name, msg_t *server_msg)
 {
 
     // invalid name or invalid pinum
-    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28 || get_bit(inodeBitmap, pinum) == 0)
+    if (pinum < 0 || name == NULL || superblock->num_inodes < pinum || strlen(name) > 28 
+        || get_bit(inodeBitmap, pinum) == 0)
     {
         return -1;
     }
@@ -123,16 +125,29 @@ int Lookup(int pinum, char *name, msg_t *server_msg)
                 if (testRead < 0){
                     return -1;
                 }
+                int j = 0;
+                printf("name: %s\n", name);
+                if(pinum != 0){
+                    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0){
+                        printf("IN STRCMP IF\n");
+                        j = 2;
+                    }
+                }
+                printf("currBlock[0].name, currBlock[0].inum: %s, %d...\n", currBlock[0].name, currBlock[0].inum);
+                printf("currBlock[1].name, currBlock[1].inum: %s, %d...\n", currBlock[1].name, currBlock[1].inum);
+                printf("currBlock[1].name, currBlock[1].inum: %s, %d...\n", currBlock[2].name, currBlock[2].inum);
                 // for every directory in datablock
-                for (int j = 0; j < 128; j++){
+                while(j < 128){
                     dir_ent_t currEntry = currBlock[j];
 
                     // check allocated inum
                     if (currEntry.inum != -1){
-                        if (currEntry.inum != -1 && strcmp(currEntry.name,name) == 0){
+                        if (strcmp(currEntry.name,name) == 0){
+                            printf("IN LOOKUP\n");
                             return currEntry.inum;
                         }
                     }
+                    j++;
                 }
             }
         }
@@ -245,12 +260,22 @@ int Read(int inum, char *buffer, int offset, int nbytes, msg_t *server_message)
 
 int Creat(int pinum, int type, char *name, msg_t *server_msg)
 {
-
+    printf("IN CREAT\n");
     // if invalid pinum or name return -1
-    if (superblock->num_inodes < pinum || pinum < 0 || name == NULL || strlen(name) > 28 || get_bit(inodeBitmap,pinum) == 0)
-    {
+    if (pinum > superblock->inode_region_len || pinum < 0 || get_bit(inodeBitmap, pinum) == 0){
+        printf("CREAT 1\n");
+        printf("pinum: %d\n", pinum);
+        printf("superblock->inode_region_len: %d\n", superblock->inode_region_len);
+        printf("get_bit(inodeBitmap, pinum): %d\n", get_bit(inodeBitmap, pinum));
         return -1;
     }
+    /*
+    if (superblock->num_inodes < pinum || pinum < 0 || name == NULL || strlen(name) > 28 || get_bit(inodeBitmap,pinum) == 0)
+    {
+        printf("CREAT 1\n");
+        return -1;
+    }
+    */
 
     /*
     // if already created great success!
@@ -263,9 +288,11 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
     inode_t *pinode = inodeTable + pinum;
 
     if(pinode->type == 1){ //Parent inode is a file 
+        printf("CREAT 1\n");
         return -1;
     }
 
+    /*
     // look for spot to put new inode
     int inum = 0;
     for(int i = 0; i < superblock->num_inodes; i++){
@@ -275,29 +302,45 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
             break;
         }
     }
+    */
+
+   int inum = 0;
+   for(int i = 0; i < UFS_BLOCK_SIZE / sizeof(int); i++){
+        if (get_bit(inodeBitmap,i) == 0){
+            inum = i;
+            break;
+        }
+   }
 
     // unable to allocate a new inode number
     if(inum == -1){
+        printf("CREAT 1\n");
         return -1;
     }
 
     if(type == 0){ // inode is a new directory
-        dir_ent_t *parentDir = (dir_ent_t*)(fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
+        dir_ent_t *parentDir = (fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
         int inumIdx = 0;
+        if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0){
+            dot_edge_case = 1;
+            inumIdx = 2;
+        }
         // iterate until we found empty spot
-        for(inumIdx = 0; inumIdx < 128 && parentDir[inumIdx].inum != -1; inumIdx++){
+        while(parentDir[inumIdx].inum != -1){
+            /*
             if (parentDir[inumIdx].inum != -1){
                 // found matching: Redundant code DELETE!!
-                if(strcmp(parentDir[inumIdx].name,name) == 0){
-                    return 0;
-                }
+            }
+            */
+            if(strcmp(parentDir[inumIdx].name,name) == 0){
+                return 0;
             }
             inumIdx++;
         }
 
         // allocate new spot in databitmap
         int dnum = -1;
-        for (int i = 0; i < UFS_BLOCK_SIZE; i++){ // perhaps look at 1024??
+        for (int i = 0; i < (UFS_BLOCK_SIZE/sizeof(int)); i++){ // perhaps look at 1024??
             if (get_bit(dataBitmap,i) == 0){
                 dnum = i;
                 break;
@@ -305,6 +348,7 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         }
         // unable to allocate space for it
         if (dnum == -1){
+            printf("CREAT 1\n");
             return -1;
         }
         set_bit(dataBitmap,dnum);
@@ -312,13 +356,7 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         // fill metadata for new inode
         inode_t *inode = inodeTable + inum;
         inode->direct[0] = (superblock->data_region_addr + dnum);
-
-        // When you create the regular file you also have to set inode->direct[i] to -1 for i is 
-        // between 1 and 29
-        for(int u = 1; u < 30; u++){
-            inode->direct[u] = -1;
-        }
-
+    
         inode->size = 2 * sizeof(dir_ent_t);
         inode->type = type;
 
@@ -326,12 +364,15 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         parentDir[inumIdx].inum = inum;
         //(parentDir + inumIdx)->inum = inum;
         strcpy(parentDir[inumIdx].name,name);
-        pinode->size+=32;
+        printf("parentDir[inumIdx].name: %s...\n", parentDir[inumIdx].name);
+        pinode->size+=sizeof(dir_ent_t);
 
         // create datablock for parent
         dir_block_t b;
         strcpy(b.entries[0].name, ".");
+        printf("b.entries[0].name: %s...\n", b.entries[0].name);
         strcpy(b.entries[1].name, "..");
+        printf("b.entries[1].name: %s...\n", b.entries[1].name);
         b.entries[0].inum = inum;
         b.entries[1].inum = pinum;
         for (int k = 2; k < 128; k++){
@@ -341,13 +382,14 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         // update data region address
         int pwCheck = pwrite(file_d, &b, UFS_BLOCK_SIZE, (superblock->data_region_addr * UFS_BLOCK_SIZE + dnum * UFS_BLOCK_SIZE));
         if (pwCheck < 0){
+            printf("CREAT 1\n");
             return -1;
         }
     } else{ // inode is a file
         dir_ent_t *parentDir = (dir_ent_t*)(fs_img + pinode->direct[0] * UFS_BLOCK_SIZE);
         int inumIdx = 0;
         // iterate until we found empty spot
-        for(inumIdx = 0; inumIdx < 128 && parentDir[inumIdx].inum != -1; inumIdx++){
+        for(inumIdx = 0; parentDir[inumIdx].inum != -1; inumIdx++){
             if (parentDir[inumIdx].inum != -1){
                 // found matching: Redundant code DELETE!!
                 if(strcmp(parentDir[inumIdx].name,name) == 0){
@@ -363,6 +405,10 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         inode->size = 0;
         inode->type = type;
 
+        for(int i = 1; i < 30; i++){
+            inode->direct[i] = -1;
+        }
+
         // update parent inode info
         parentDir[inumIdx].inum = inum;
         //(parentDir + inumIdx)->inum = inum;
@@ -372,12 +418,16 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
     
     int testSync = msync(fs_img,fs_img_size,MS_SYNC);
     if (testSync < 0){
+        printf("CREAT 1\n");
         return -1;
     }
     testSync = fsync(file_d);
     if (testSync < 0){
+        printf("CREAT 1\n");
         return -1;
     }
+
+    printf("CREAT END\n");
     return 0;
 }
 
@@ -412,6 +462,14 @@ int Unlink(int pinum, char *name, msg_t *server_msg)
         if(child->size > 2 * sizeof(msg_t)){ //we have more directory entries than "." and ".."
             return -1;
         }
+        /*
+        dir_block_t curr_block;
+        long curr_addr = (long) (fs_img + superblock->data_region_addr * UFS_BLOCK_SIZE  + child->direct[0] * UFS_BLOCK_SIZE);
+        memcpy(&curr_block, (void *)curr_addr, sizeof(dir_block_t));
+        if(curr_block.entries[2].inum != -1){
+            return -1;
+        }
+        */
         for(int i = 0; i < DIRECT_PTRS; i++){ //clear child datablocks
             clear_bit(dataBitmap, child->direct[i]);
         }

@@ -28,8 +28,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9023
-/tmp/tmpEUjb9_/p/server 9023 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5909
+/tmp/tmpGKg7s5/p/server 5909 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 
 
@@ -50,8 +50,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5969
-/tmp/tmpEUjb9_/p/server 5969 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6047
+/tmp/tmpGKg7s5/p/server 6047 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -74,8 +74,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5237
-/tmp/tmpEUjb9_/p/server 5237 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6733
+/tmp/tmpGKg7s5/p/server 6733 /home/prasun/CS537/p4/p4/test.img
 ('START BLOCK 1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00END BLOCK 1')
 ('\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 Failure: Corrupt data returned by read
@@ -99,8 +99,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9214
-/tmp/tmpEUjb9_/p/server 9214 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8342
+/tmp/tmpGKg7s5/p/server 8342 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -127,8 +127,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5268
-/tmp/tmpEUjb9_/p/server 5268 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5565
+/tmp/tmpGKg7s5/p/server 5565 /home/prasun/CS537/p4/p4/test.img
 Failure: Corrupt data returned by read
 
 
@@ -150,8 +150,8 @@ total blocks        39
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7993
-/tmp/tmpEUjb9_/p/server 7993 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6111
+/tmp/tmpGKg7s5/p/server 6111 /home/prasun/CS537/p4/p4/test.img
 Failure: Corrupt data returned by read
 
 
@@ -173,8 +173,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9860
-/tmp/tmpEUjb9_/p/server 9860 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5470
+/tmp/tmpGKg7s5/p/server 5470 /home/prasun/CS537/p4/p4/test.img
 31
 write more than need
 Failure: Corrupt data returned by read
@@ -198,8 +198,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5466
-/tmp/tmpEUjb9_/p/server 5466 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7618
+/tmp/tmpGKg7s5/p/server 7618 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -222,8 +222,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 7241
-/tmp/tmpEUjb9_/p/server 7241 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6583
+/tmp/tmpGKg7s5/p/server 6583 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Lookup returned failure inum=1 name='.'
 
 
@@ -245,8 +245,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 6753
-/tmp/tmpEUjb9_/p/server 6753 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 9393
+/tmp/tmpGKg7s5/p/server 9393 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -270,8 +270,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5613
-/tmp/tmpEUjb9_/p/server 5613 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 6272
+/tmp/tmpGKg7s5/p/server 6272 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -295,8 +295,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5723
-/tmp/tmpEUjb9_/p/server 5723 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5917
+/tmp/tmpGKg7s5/p/server 5917 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -321,8 +321,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8449
-/tmp/tmpEUjb9_/p/server 8449 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 8783
+/tmp/tmpGKg7s5/p/server 8783 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 server:: waiting...
 server:: waiting...
@@ -347,8 +347,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 9812
-/tmp/tmpEUjb9_/p/server 9812 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7617
+/tmp/tmpGKg7s5/p/server 7617 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Creat returned failure inum=1 type=1 name='testfile'
 
 
@@ -370,8 +370,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8955
-/tmp/tmpEUjb9_/p/server 8955 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 7720
+/tmp/tmpGKg7s5/p/server 7720 /home/prasun/CS537/p4/p4/test.img
 server:: waiting...
 
 
@@ -392,8 +392,8 @@ total blocks        36
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 6936
-/tmp/tmpEUjb9_/p/server 6936 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 9972
+/tmp/tmpGKg7s5/p/server 9972 /home/prasun/CS537/p4/p4/test.img
 Failure: Corrupt data returned by read
 
 
@@ -415,8 +415,8 @@ total blocks        39
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 5128
-/tmp/tmpEUjb9_/p/server 5128 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 5372
+/tmp/tmpGKg7s5/p/server 5372 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Creat returned failure inum=1 type=1 name='0'
 
 
@@ -438,8 +438,8 @@ total blocks        39
 layout details
   inode bitmap address/len 1 [1]
   data bitmap address/len  2 [1]
-Starting server on port 8913
-/tmp/tmpEUjb9_/p/server 8913 /home/prasun/CS537/p4/p4/test.img
+Starting server on port 9931
+/tmp/tmpGKg7s5/p/server 9931 /home/prasun/CS537/p4/p4/test.img
 Failure: MFS_Creat returned failure inum=1 type=0 name='0'
 
 

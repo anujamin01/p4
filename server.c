@@ -312,6 +312,13 @@ int Creat(int pinum, int type, char *name, msg_t *server_msg)
         // fill metadata for new inode
         inode_t *inode = inodeTable + inum;
         inode->direct[0] = (superblock->data_region_addr + dnum);
+
+        // When you create the regular file you also have to set inode->direct[i] to -1 for i is 
+        // between 1 and 29
+        for(int u = 1; u < 30; u++){
+            inode->direct[u] = -1;
+        }
+
         inode->size = 2 * sizeof(dir_ent_t);
         inode->type = type;
 
@@ -392,21 +399,21 @@ int Unlink(int pinum, char *name, msg_t *server_msg)
         return -1;
     }
 
-    inode_t child = inodeTable[childInum];
+    inode_t *child = inodeTable + childInum;
     
-    if(child.type == 1){ // child is a file
+    if(child->type == 1){ // child is a file
         for(int i = 0; i < DIRECT_PTRS; i++){
-            if(child.direct[i] != -1){ //setting direct poitners to zero.
-                clear_bit(dataBitmap, child.direct[i]);
+            if(child->direct[i] != -1){ //setting direct poitners to zero.
+                clear_bit(dataBitmap, child->direct[i]);
             }
         }
     }
     else{ //it is a directory
-        if(child.size > 2 * sizeof(MFS_DirEnt_t)){ //we have more directory entries than "." and ".."
+        if(child->size > 2 * sizeof(msg_t)){ //we have more directory entries than "." and ".."
             return -1;
         }
         for(int i = 0; i < DIRECT_PTRS; i++){ //clear child datablocks
-            clear_bit(dataBitmap, child.direct[i]);
+            clear_bit(dataBitmap, child->direct[i]);
         }
     }
     int found = -1;
